@@ -20,4 +20,13 @@ export class ActaClient {
       .post<CreateCredentialResponse>("/credentials", data)
       .then((r) => r.data);
   }
+
+  getConfig() {
+    return this.axios.get("/config").then((r) => r.data as {
+      rpcUrl: string;
+      networkPassphrase: string;
+      issuanceContractId?: string;
+      vaultContractId: string;
+    });
+  }
 }
