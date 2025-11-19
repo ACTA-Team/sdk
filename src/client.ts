@@ -1,12 +1,14 @@
 import axios, { AxiosInstance } from "axios";
-import { baseURL } from "./types/types";
+import { baseURL, DEFAULT_VAULT_CONTRACT_ID, DEFAULT_ISSUANCE_CONTRACT_ID } from "./types/types";
 import { CreateCredentialPayload, CreateCredentialResponse } from "./types";
 
 export class ActaClient {
   private axios: AxiosInstance;
+  private network: "mainnet" | "testnet";
 
   constructor(baseURL: baseURL, apiKey: string) {
     this.axios = axios.create({ baseURL });
+    this.network = baseURL.includes("mainnet") ? "mainnet" : "testnet";
     // if (apiKey) this.setApiKey(apiKey);
   }
 
@@ -22,11 +24,20 @@ export class ActaClient {
   }
 
   getConfig() {
-    return this.axios.get("/config").then((r) => r.data as {
-      rpcUrl: string;
-      networkPassphrase: string;
-      issuanceContractId?: string;
-      vaultContractId: string;
+    return this.axios.get("/config").then((r) => {
+      const d = r.data as {
+        rpcUrl: string;
+        networkPassphrase: string;
+        issuanceContractId?: string;
+        vaultContractId?: string;
+      };
+      const net = this.network;
+      return {
+        rpcUrl: d.rpcUrl,
+        networkPassphrase: d.networkPassphrase,
+        issuanceContractId: d.issuanceContractId || DEFAULT_ISSUANCE_CONTRACT_ID[net],
+        vaultContractId: d.vaultContractId || DEFAULT_VAULT_CONTRACT_ID[net],
+      };
     });
   }
 
