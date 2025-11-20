@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from "axios";
-import { baseURL, DEFAULT_VAULT_CONTRACT_ID, DEFAULT_ISSUANCE_CONTRACT_ID } from "./types/types";
+import { baseURL, DEFAULT_VAULT_CONTRACT_ID, DEFAULT_ISSUANCE_CONTRACT_ID, DEFAULT_RPC_URL, DEFAULT_NETWORK_PASSPHRASE } from "./types/types";
 import { CreateCredentialPayload, CreateCredentialResponse } from "./types";
 
 /**
@@ -35,25 +35,31 @@ export class ActaClient {
   }
 
   /**
-   * Fetch runtime configuration from the server.
-   * @returns Resolved config: `rpcUrl`, `networkPassphrase`, `issuanceContractId`, `vaultContractId`.
+   * Get service health status.
+   * @returns Service status, timestamp, and environment info.
    */
-  getConfig() {
-    return this.axios.get("/config").then((r) => {
-      const d = r.data as {
-        rpcUrl: string;
-        networkPassphrase: string;
-        issuanceContractId?: string;
-        vaultContractId?: string;
-      };
-      const net = this.network;
-      return {
-        rpcUrl: d.rpcUrl,
-        networkPassphrase: d.networkPassphrase,
-        issuanceContractId: d.issuanceContractId || DEFAULT_ISSUANCE_CONTRACT_ID[net],
-        vaultContractId: d.vaultContractId || DEFAULT_VAULT_CONTRACT_ID[net],
-      };
+  getHealth() {
+    return this.axios.get("/health").then((r) => r.data as {
+      status: string;
+      timestamp: string;
+      service: string;
+      port?: number | string;
+      env?: Record<string, unknown>;
     });
+  }
+
+  /**
+   * Get default runtime configuration inferred from network.
+   * @returns Defaults: `rpcUrl`, `networkPassphrase`, `issuanceContractId`, `vaultContractId`.
+   */
+  getDefaults() {
+    const net = this.network;
+    return {
+      rpcUrl: DEFAULT_RPC_URL[net],
+      networkPassphrase: DEFAULT_NETWORK_PASSPHRASE[net],
+      issuanceContractId: DEFAULT_ISSUANCE_CONTRACT_ID[net],
+      vaultContractId: DEFAULT_VAULT_CONTRACT_ID[net],
+    };
   }
 
   /**
@@ -93,6 +99,28 @@ export class ActaClient {
   }
 
   /**
+   * Prepare an unsigned XDR to list VC IDs from the Vault.
+   * @param args - `{ owner, vaultContractId? }` identifying the owner and optional Vault contract.
+   * @returns `{ unsignedXdr }` to be signed by the caller.
+   */
+  prepareListVcIdsTx(args: { owner: string; vaultContractId?: string }) {
+    return this.axios
+      .post("/tx/prepare/list_vc_ids", args)
+      .then((r) => r.data as { unsignedXdr: string });
+  }
+
+  /**
+   * Prepare an unsigned XDR to fetch a VC from the Vault.
+   * @param args - `{ owner, vcId, vaultContractId? }` describing the VC to read.
+   * @returns `{ unsignedXdr }` to be signed by the caller.
+   */
+  prepareGetVcTx(args: { owner: string; vcId: string; vaultContractId?: string }) {
+    return this.axios
+      .post("/tx/prepare/get_vc", args)
+      .then((r) => r.data as { unsignedXdr: string });
+  }
+
+  /**
    * Submit a signed XDR to store a credential in the Vault.
    * @param payload - Signed XDR and identifiers.
    * @returns Store result with `vc_id`, `tx_id`, optional `issue_tx_id`, and `verification`.
@@ -118,7 +146,7 @@ export class ActaClient {
    */
   vaultVerify(args: { owner: string; vcId: string; vaultContractId?: string }) {
     return this.axios
-      .post("/vault/verify", args)
+      .post("/verify", args)
       .then((r) => r.data as { vc_id: string; status: string; since?: string });
   }
 
@@ -129,7 +157,7 @@ export class ActaClient {
    */
   verifyStatus(vcId: string) {
     return this.axios
-      .get(`/verify/${encodeURIComponent(vcId)}`)
+      .post(`/verify`, { vcId })
       .then((r) => r.data as { vc_id: string; status: string; since?: string });
   }
 
@@ -140,7 +168,18 @@ export class ActaClient {
    */
   vaultListVcIdsDirect(args: { owner: string; vaultContractId?: string }) {
     return this.axios
-      .post("/vault/list_vc_ids_direct", args)
+      .post("/vault/list_vc_ids", args)
+      .then((r) => r.data as { vc_ids?: string[]; result?: string[] });
+  }
+
+  /**
+   * List VC IDs in the Vault using either signed XDR or direct owner payload.
+   * @param payload - Either `{ signedXdr }` or `{ owner, vaultContractId? }`.
+   * @returns `{ vc_ids }` or `{ result }` with IDs.
+   */
+  vaultListVcIds(payload: { signedXdr: string } | { owner: string; vaultContractId?: string }) {
+    return this.axios
+      .post("/vault/list_vc_ids", payload)
       .then((r) => r.data as { vc_ids?: string[]; result?: string[] });
   }
 
@@ -151,7 +190,40 @@ export class ActaClient {
    */
   vaultGetVcDirect(args: { owner: string; vcId: string; vaultContractId?: string }) {
     return this.axios
-      .post("/vault/get_vc_direct", args)
+      .post("/vault/get_vc", args)
       .then((r) => r.data as { vc?: unknown; result?: unknown });
+  }
+
+  /**
+   * Fetch a VC from the Vault using either signed XDR or direct owner payload.
+   * @param payload - Either `{ signedXdr }` or `{ owner, vcId, vaultContractId? }`.
+   * @returns `{ vc }` or `{ result }` with credential contents.
+   */
+  vaultGetVc(payload: { signedXdr: string } | { owner: string; vcId: string; vaultContractId?: string }) {
+    return this.axios
+      .post("/vault/get_vc", payload)
+      .then((r) => r.data as { vc?: unknown; result?: unknown });
+  }
+
+  /**
+   * Revoke an issuer in the Vault using either signed XDR or direct owner payload.
+   * @param payload - Either `{ signedXdr }` or `{ owner, issuer, vaultContractId }`.
+   * @returns `{ tx_id }` of the revoke transaction.
+   */
+  vaultRevokeIssuer(payload: { signedXdr: string } | { owner: string; issuer: string; vaultContractId: string }) {
+    return this.axios
+      .post("/vault/revoke_issuer", payload)
+      .then((r) => r.data as { tx_id: string });
+  }
+
+  /**
+   * Verify credential status via GET (legacy compatibility).
+   * @param vcId - Credential identifier.
+   * @returns Verification result with `vc_id`, `status`, and optional `since`.
+   */
+  verifyStatusGet(vcId: string) {
+    return this.axios
+      .get(`/verify/${encodeURIComponent(vcId)}`)
+      .then((r) => r.data as { vc_id: string; status: string; since?: string });
   }
 }

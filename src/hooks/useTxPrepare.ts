@@ -25,5 +25,9 @@ export function useTxPrepare() {
       issuer?: string
       issuerDid?: string
     }) => client.prepareIssueTx(args),
+    /** Build request for `/tx/prepare/list_vc_ids`. */
+    prepareListVcIds: (args: { owner: string; vaultContractId?: string }) => client.prepareListVcIdsTx(args),
+    /** Build request for `/tx/prepare/get_vc`. */
+    prepareGetVc: (args: { owner: string; vcId: string; vaultContractId?: string }) => client.prepareGetVcTx(args),
   }
 }

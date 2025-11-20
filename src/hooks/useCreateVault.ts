@@ -30,7 +30,7 @@ export function useCreateVault() {
      * @returns `{ txId }` of the submitted transaction.
      */
     createVault: async (args: { owner: string; ownerDid: string; signTransaction: Signer }) => {
-      const cfg = await client.getConfig()
+      const cfg = client.getDefaults()
       const { rpcUrl, networkPassphrase, vaultContractId } = cfg
       if (!vaultContractId) throw new Error("Vault contract ID not configured")
       const server = new rpc.Server(rpcUrl)

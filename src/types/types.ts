@@ -22,3 +22,15 @@ export const DEFAULT_USDC_ISSUER = {
   mainnet: "CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75",
   testnet: "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
 };
+
+/** Default Soroban RPC URLs per network. */
+export const DEFAULT_RPC_URL = {
+  mainnet: "https://soroban.stellar.org",
+  testnet: "https://soroban-testnet.stellar.org",
+};
+
+/** Default network passphrases per network. */
+export const DEFAULT_NETWORK_PASSPHRASE = {
+  mainnet: "Public Global Stellar Network ; September 2015",
+  testnet: "Test SDF Network ; September 2015",
+};
