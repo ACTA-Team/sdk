@@ -9,3 +9,4 @@ export * from "./useAuthorizeIssuer";
 export * from "./useVaultApi";
 export * from "./useTxPrepare";
 export * from "./useVaultStore";
+export * from "./useRevokeCredential";

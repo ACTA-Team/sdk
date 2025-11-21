@@ -226,4 +226,15 @@ export class ActaClient {
       .get(`/verify/${encodeURIComponent(vcId)}`)
       .then((r) => r.data as { vc_id: string; status: string; since?: string });
   }
+
+  /**
+   * Revoke a credential via the Issuance contract (admin-signed on server).
+   * @param payload - `{ vcId, date? }` where `date` defaults to current ISO timestamp.
+   * @returns `{ vc_id, tx_id }` of the revoke transaction.
+   */
+  revokeCredential(payload: { vcId: string; date?: string }) {
+    return this.axios
+      .post('/issuance/revoke', payload)
+      .then((r) => r.data as { vc_id: string; tx_id: string });
+  }
 }
