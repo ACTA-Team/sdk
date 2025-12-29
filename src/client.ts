@@ -20,7 +20,20 @@ export class ActaClient {
   constructor(baseURL: baseURL, apiKey: string) {
     this.axios = axios.create({ baseURL });
     this.network = baseURL.includes("mainnet") ? "mainnet" : "testnet";
-    // if (apiKey) this.setApiKey(apiKey);
+    if (apiKey) this.setApiKey(apiKey);
+  }
+
+  /**
+   * Set the API key for the client
+   * @param apiKey - The API key to set
+   */
+  setApiKey(apiKey: string) {
+    this.axios.interceptors.request.clear();
+    this.axios.interceptors.request.use((config) => {
+      config.headers = config.headers ?? {};
+      config.headers["x-api-key"] = apiKey;
+      return config;
+    });
   }
 
   /**
@@ -117,6 +130,28 @@ export class ActaClient {
   prepareGetVcTx(args: { owner: string; vcId: string; vaultContractId?: string }) {
     return this.axios
       .post("/tx/prepare/get_vc", args)
+      .then((r) => r.data as { unsignedXdr: string });
+  }
+
+  /**
+   * Prepare an unsigned XDR to initialize a Vault.
+   * @param args - `{ owner, ownerDid, vaultContractId? }` describing the vault to initialize.
+   * @returns `{ unsignedXdr }` to be signed by the caller.
+   */
+  prepareInitializeTx(args: { owner: string; ownerDid: string; vaultContractId?: string }) {
+    return this.axios
+      .post("/tx/prepare/initialize", args)
+      .then((r) => r.data as { unsignedXdr: string });
+  }
+
+  /**
+   * Prepare an unsigned XDR to authorize an issuer in the Vault.
+   * @param args - `{ owner, issuer, vaultContractId? }` describing the issuer to authorize.
+   * @returns `{ unsignedXdr }` to be signed by the caller.
+   */
+  prepareAuthorizeIssuerTx(args: { owner: string; issuer: string; vaultContractId?: string }) {
+    return this.axios
+      .post("/tx/prepare/authorize_issuer", args)
       .then((r) => r.data as { unsignedXdr: string });
   }
 
@@ -236,5 +271,27 @@ export class ActaClient {
     return this.axios
       .post('/issuance/revoke', payload)
       .then((r) => r.data as { vc_id: string; tx_id: string });
+  }
+
+  /**
+   * Initialize a Vault for an owner via the API.
+   * @param payload - `{ signedXdr }` (signed transaction) or `{ owner, ownerDid, vaultContractId? }` (direct call).
+   * @returns `{ tx_id }` of the initialize transaction.
+   */
+  vaultInitialize(payload: { signedXdr: string } | { owner: string; ownerDid: string; vaultContractId?: string }) {
+    return this.axios
+      .post("/vault/initialize", payload)
+      .then((r) => r.data as { tx_id: string });
+  }
+
+  /**
+   * Authorize an issuer in the Vault via the API.
+   * @param payload - `{ signedXdr }` (signed transaction) or `{ owner, issuer, vaultContractId? }` (direct call).
+   * @returns `{ tx_id }` of the authorize transaction.
+   */
+  vaultAuthorizeIssuer(payload: { signedXdr: string } | { owner: string; issuer: string; vaultContractId?: string }) {
+    return this.axios
+      .post("/vault/authorize_issuer", payload)
+      .then((r) => r.data as { tx_id: string });
   }
 }
