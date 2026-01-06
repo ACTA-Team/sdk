@@ -33,10 +33,11 @@ export class ActaClient {
   /**
    * Initialize a new client instance.
    * @param baseURL - Base API URL for ACTA services (mainnet or testnet).
-   * @throws Error if API key environment variable is not set for the network.
+   * @param apiKey - API key for authentication. If not provided, will be read from environment variables.
+   * @throws Error if API key is not provided and environment variable is not set for the network.
    *
-   * The API key is automatically read from environment variables and configured
-   * in the X-ACTA-Key header for all requests.
+   * The API key is required and must be provided either as a parameter or via environment variables.
+   * It is automatically configured in the X-ACTA-Key header for all requests.
    *
    * API keys are network-specific. Set in your .env file:
    * - ACTA_API_KEY_MAINNET=your-mainnet-api-key (for mainnet)
@@ -45,28 +46,28 @@ export class ActaClient {
    * Or use ACTA_API_KEY as fallback for both networks:
    * - ACTA_API_KEY=your-api-key (works for both networks)
    */
-  constructor(baseURL: baseURL) {
+  constructor(baseURL: baseURL, apiKey?: string) {
     this.axios = axios.create({ baseURL });
     this.network = baseURL.includes("mainnet") ? "mainnet" : "testnet";
 
-    // Read API key from environment variable (network-specific or fallback)
+    // Use provided API key, or read from environment variable (network-specific or fallback)
     const env = typeof process !== "undefined" ? process.env : {};
     const networkSpecificKey =
       this.network === "mainnet"
         ? env.ACTA_API_KEY_MAINNET
         : env.ACTA_API_KEY_TESTNET;
 
-    const apiKey = networkSpecificKey || env.ACTA_API_KEY;
+    const finalApiKey = apiKey || networkSpecificKey || env.ACTA_API_KEY;
 
-    if (!apiKey || apiKey.trim() === "") {
+    if (!finalApiKey || finalApiKey.trim() === "") {
       const networkVar =
         this.network === "mainnet"
           ? "ACTA_API_KEY_MAINNET"
           : "ACTA_API_KEY_TESTNET";
 
       throw new Error(
-        `API key environment variable is required for ${this.network}.\n` +
-          `Set it in your .env file:\n` +
+        `API key is required for ${this.network}.\n` +
+          `Provide it as a parameter or set it in your .env file:\n` +
           `- ${networkVar}=your-${this.network}-api-key (recommended)\n` +
           `- Or ACTA_API_KEY=your-api-key (fallback for both networks)\n\n` +
           `Get your API key from https://dapp.acta.build or create one via:\n` +
@@ -78,7 +79,7 @@ export class ActaClient {
     // Configure interceptor to automatically add API key header to all requests
     this.axios.interceptors.request.use((config) => {
       config.headers = config.headers || {};
-      config.headers["X-ACTA-Key"] = apiKey.trim();
+      config.headers["X-ACTA-Key"] = finalApiKey.trim();
       return config;
     });
   }

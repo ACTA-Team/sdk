@@ -1,6 +1,6 @@
 {
   "name": "@acta-team/acta-sdk",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "",
   "type": "commonjs",
   "main": "dist/index.js",
