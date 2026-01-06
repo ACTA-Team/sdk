@@ -23,7 +23,6 @@ ACTA_API_KEY_TESTNET=your-testnet-api-key
 **Get your API key:**
 
 - From the dApp: https://dapp.acta.build
-- Or create one via API: `POST /testnet/public/api-keys` or `POST /mainnet/public/api-keys`
 
 ### 2. Configure the Provider
 
