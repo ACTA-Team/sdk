@@ -1,6 +1,23 @@
 import axios, { AxiosInstance } from "axios";
-import { baseURL, DEFAULT_VAULT_CONTRACT_ID, DEFAULT_ISSUANCE_CONTRACT_ID, DEFAULT_RPC_URL, DEFAULT_NETWORK_PASSPHRASE } from "./types/types";
+import { baseURL } from "./types/types";
 import { CreateCredentialPayload, CreateCredentialResponse } from "./types";
+import type {
+  ConfigResponse,
+  HealthResponse,
+  TxPrepareResponse,
+  TxSubmitResponse,
+  VaultCreateResponse,
+  VaultAuthorizeIssuerResponse,
+  VaultRevokeIssuerResponse,
+  VaultRevokeVaultResponse,
+  VcIssueResponse,
+  VcRevokeResponse,
+  VaultListVcIdsResponse,
+  VaultGetVcResponse,
+  VaultVerifyVcResponse,
+  VerifyStatusResponse,
+  RevokeCredentialResponse,
+} from "./types/api-responses";
 
 /**
  * ACTA SDK HTTP client.
@@ -11,61 +28,147 @@ import { CreateCredentialPayload, CreateCredentialResponse } from "./types";
 export class ActaClient {
   private axios: AxiosInstance;
   private network: "mainnet" | "testnet";
+  private configCache: ConfigResponse | null = null;
 
   /**
    * Initialize a new client instance.
    * @param baseURL - Base API URL for ACTA services (mainnet or testnet).
-   * @param apiKey - Optional API key for authenticated endpoints.
+   * @throws Error if API key environment variable is not set for the network.
+   *
+   * The API key is automatically read from environment variables and configured
+   * in the X-ACTA-Key header for all requests.
+   *
+   * API keys are network-specific. Set in your .env file:
+   * - ACTA_API_KEY_MAINNET=your-mainnet-api-key (for mainnet)
+   * - ACTA_API_KEY_TESTNET=your-testnet-api-key (for testnet)
+   *
+   * Or use ACTA_API_KEY as fallback for both networks:
+   * - ACTA_API_KEY=your-api-key (works for both networks)
    */
-  constructor(baseURL: baseURL, apiKey: string) {
+  constructor(baseURL: baseURL) {
     this.axios = axios.create({ baseURL });
     this.network = baseURL.includes("mainnet") ? "mainnet" : "testnet";
-    // if (apiKey) this.setApiKey(apiKey);
+
+    // Read API key from environment variable (network-specific or fallback)
+    const env = typeof process !== "undefined" ? process.env : {};
+    const networkSpecificKey =
+      this.network === "mainnet"
+        ? env.ACTA_API_KEY_MAINNET
+        : env.ACTA_API_KEY_TESTNET;
+
+    const apiKey = networkSpecificKey || env.ACTA_API_KEY;
+
+    if (!apiKey || apiKey.trim() === "") {
+      const networkVar =
+        this.network === "mainnet"
+          ? "ACTA_API_KEY_MAINNET"
+          : "ACTA_API_KEY_TESTNET";
+
+      throw new Error(
+        `API key environment variable is required for ${this.network}.\n` +
+          `Set it in your .env file:\n` +
+          `- ${networkVar}=your-${this.network}-api-key (recommended)\n` +
+          `- Or ACTA_API_KEY=your-api-key (fallback for both networks)\n\n` +
+          `Get your API key from https://dapp.acta.build or create one via:\n` +
+          `- POST /testnet/public/api-keys (for testnet)\n` +
+          `- POST /mainnet/public/api-keys (for mainnet)`
+      );
+    }
+
+    // Configure interceptor to automatically add API key header to all requests
+    this.axios.interceptors.request.use((config) => {
+      config.headers = config.headers || {};
+      config.headers["X-ACTA-Key"] = apiKey.trim();
+      return config;
+    });
   }
 
   /**
+   * @deprecated Use vcIssue endpoint instead. This method is kept for backward compatibility but will be removed.
    * Create a new credential
-   * @param data - The data to create a new credential
-   * @returns The response from the API CreateCredentialResponse
    */
   createCredential(data: CreateCredentialPayload) {
-    return this.axios
-      .post<CreateCredentialResponse>("/credentials", data)
-      .then((r) => r.data);
+    throw new Error(
+      "createCredential is deprecated. Use vcIssue endpoint via useCreateCredential hook instead."
+    );
   }
 
   /**
    * Get service health status.
    * @returns Service status, timestamp, and environment info.
    */
-  getHealth() {
-    return this.axios.get("/health").then((r) => r.data as {
-      status: string;
-      timestamp: string;
-      service: string;
-      port?: number | string;
-      env?: Record<string, unknown>;
-    });
+  getHealth(): Promise<HealthResponse> {
+    return this.axios.get<HealthResponse>("/health").then((r) => r.data);
   }
 
   /**
-   * Get default runtime configuration inferred from network.
-   * @returns Defaults: `rpcUrl`, `networkPassphrase`, `issuanceContractId`, `vaultContractId`.
+   * Get configuration from the API.
+   * @returns Configuration: `rpcUrl`, `networkPassphrase`, `actaContractId`.
+   * @throws Error if the API is unavailable.
    */
-  getDefaults() {
-    const net = this.network;
+  async getConfig(): Promise<ConfigResponse> {
+    if (this.configCache) {
+      return this.configCache;
+    }
+
+    const response = await this.axios.get<ConfigResponse>("/config");
+
+    this.configCache = response.data;
+    return this.configCache;
+  }
+
+  /**
+   * Get default runtime configuration from the API.
+   * @deprecated Use `getConfig()` instead. This method is kept for backward compatibility.
+   * @returns Configuration from the API: `rpcUrl`, `networkPassphrase`, `actaContractId`.
+   */
+  async getDefaults() {
+    const config = await this.getConfig();
     return {
-      rpcUrl: DEFAULT_RPC_URL[net],
-      networkPassphrase: DEFAULT_NETWORK_PASSPHRASE[net],
-      issuanceContractId: DEFAULT_ISSUANCE_CONTRACT_ID[net],
-      vaultContractId: DEFAULT_VAULT_CONTRACT_ID[net],
+      rpcUrl: config.rpcUrl,
+      networkPassphrase: config.networkPassphrase,
+      actaContractId: config.actaContractId,
+      // Legacy support - map to actaContractId
+      issuanceContractId: config.actaContractId,
+      vaultContractId: config.actaContractId,
     };
   }
 
   /**
+   * Prepare an unsigned XDR to issue a credential (which stores it in the vault).
+   * Uses the same endpoint as vcIssue but only prepares the transaction.
+   * @param args - Arguments describing the owner, VC ID, VC data, issuer, etc.
+   * @returns `{ xdr, network }` to be signed by the caller.
+   */
+  prepareIssueTx(args: {
+    owner: string;
+    vcId: string;
+    vcData: string;
+    issuer: string;
+    issuerDid?: string;
+    contractId?: string;
+    sourcePublicKey: string;
+  }): Promise<TxPrepareResponse> {
+    return this.vcIssue(args).then((r) => {
+      if ("tx_id" in r) {
+        throw new Error("Unexpected submit response in prepare mode");
+      }
+      if (!r.xdr || !r.network) {
+        throw new Error(
+          "Failed to prepare transaction: missing xdr or network"
+        );
+      }
+      return {
+        xdr: r.xdr,
+        network: r.network,
+      };
+    });
+  }
+
+  /**
+   * @deprecated Use vcIssue endpoint directly. This method is kept for backward compatibility.
    * Prepare an unsigned XDR to store a credential in the Vault.
-   * @param args - Arguments describing the owner, VC, DID, and fields.
-   * @returns `{ unsignedXdr }` to be signed by the caller.
+   * Note: Storing is done via vcIssue which stores and marks as valid.
    */
   prepareStoreTx(args: {
     owner: string;
@@ -75,55 +178,51 @@ export class ActaClient {
     vaultContractId?: string;
     issuer?: string;
   }) {
-    return this.axios
-      .post("/tx/prepare/store", args)
-      .then((r) => r.data as { unsignedXdr: string });
+    // Store is handled by vcIssue, so we redirect to that
+    if (!args.issuer) {
+      throw new Error("Issuer is required to issue/store a credential");
+    }
+    return this.prepareIssueTx({
+      owner: args.owner,
+      vcId: args.vcId,
+      vcData: JSON.stringify(args.fields),
+      issuer: args.issuer,
+      contractId: args.vaultContractId,
+      sourcePublicKey: args.owner,
+    });
   }
 
   /**
-   * Prepare an unsigned XDR to issue a credential via the Issuance contract.
-   * @param args - Arguments describing the owner, VC ID, and VC data.
-   * @returns `{ unsignedXdr }` to be signed by the caller.
-   */
-  prepareIssueTx(args: {
-    owner: string;
-    vcId: string;
-    vcData: string;
-    vaultContractId?: string;
-    issuer?: string;
-    issuerDid?: string;
-  }) {
-    return this.axios
-      .post("/tx/prepare/issue", args)
-      .then((r) => r.data as { unsignedXdr: string });
-  }
-
-  /**
-   * Prepare an unsigned XDR to list VC IDs from the Vault.
-   * @param args - `{ owner, vaultContractId? }` identifying the owner and optional Vault contract.
-   * @returns `{ unsignedXdr }` to be signed by the caller.
+   * @deprecated These are read operations, not prepare operations. Use vaultListVcIdsDirect instead.
+   * List VC IDs from the Vault (read operation, no XDR needed).
    */
   prepareListVcIdsTx(args: { owner: string; vaultContractId?: string }) {
-    return this.axios
-      .post("/tx/prepare/list_vc_ids", args)
-      .then((r) => r.data as { unsignedXdr: string });
+    return this.vaultListVcIdsDirect(args).then(() => {
+      throw new Error(
+        "prepareListVcIdsTx is deprecated. Use vaultListVcIdsDirect for read operations."
+      );
+    });
   }
 
   /**
-   * Prepare an unsigned XDR to fetch a VC from the Vault.
-   * @param args - `{ owner, vcId, vaultContractId? }` describing the VC to read.
-   * @returns `{ unsignedXdr }` to be signed by the caller.
+   * @deprecated These are read operations, not prepare operations. Use vaultGetVcDirect instead.
+   * Fetch a VC from the Vault (read operation, no XDR needed).
    */
-  prepareGetVcTx(args: { owner: string; vcId: string; vaultContractId?: string }) {
-    return this.axios
-      .post("/tx/prepare/get_vc", args)
-      .then((r) => r.data as { unsignedXdr: string });
+  prepareGetVcTx(args: {
+    owner: string;
+    vcId: string;
+    vaultContractId?: string;
+  }) {
+    return this.vaultGetVcDirect(args).then(() => {
+      throw new Error(
+        "prepareGetVcTx is deprecated. Use vaultGetVcDirect for read operations."
+      );
+    });
   }
 
   /**
+   * @deprecated Storing is handled automatically by vcIssue. Use vcIssue endpoint instead.
    * Submit a signed XDR to store a credential in the Vault.
-   * @param payload - Signed XDR and identifiers.
-   * @returns Store result with `vc_id`, `tx_id`, optional `issue_tx_id`, and `verification`.
    */
   vaultStore(payload: {
     signedXdr: string;
@@ -131,23 +230,30 @@ export class ActaClient {
     owner?: string;
     vaultContractId?: string;
   }) {
-    return this.axios.post("/vault/store", payload).then((r) => r.data as {
-      vc_id: string;
-      tx_id: string;
-      issue_tx_id?: string;
-      verification?: { status?: string; since?: string };
-    });
+    throw new Error(
+      "vaultStore is deprecated. Credentials are stored automatically when issued via vcIssue. Use useIssueCredential hook instead."
+    );
   }
 
   /**
    * Verify a credential against the Vault contract.
-   * @param args - Owner, VC ID, and optional Vault contract ID.
-   * @returns Verification result with `vc_id`, `status`, and optional `since`.
+   * @param args - Owner, VC ID, and optional contract ID.
+   * @returns Verification result with `status` and optional `since`.
    */
-  vaultVerify(args: { owner: string; vcId: string; vaultContractId?: string }) {
+  vaultVerify(args: {
+    owner: string;
+    vcId: string;
+    vaultContractId?: string;
+    contractId?: string;
+  }): Promise<VaultVerifyVcResponse> {
+    const contractId = args.vaultContractId || args.contractId;
     return this.axios
-      .post("/verify", args)
-      .then((r) => r.data as { vc_id: string; status: string; since?: string });
+      .post<VaultVerifyVcResponse>("/contracts/vault/verify-vc", {
+        owner: args.owner,
+        vcId: args.vcId,
+        contractId,
+      })
+      .then((r) => r.data);
   }
 
   /**
@@ -155,21 +261,29 @@ export class ActaClient {
    * @param vcId - Credential identifier.
    * @returns Verification result with `vc_id`, `status`, and optional `since`.
    */
-  verifyStatus(vcId: string) {
+  verifyStatus(vcId: string): Promise<VerifyStatusResponse> {
     return this.axios
-      .post(`/verify`, { vcId })
-      .then((r) => r.data as { vc_id: string; status: string; since?: string });
+      .post<VerifyStatusResponse>(`/verify`, { vcId })
+      .then((r) => r.data);
   }
 
   /**
    * List credential IDs directly from the Vault contract.
-   * @param args - Owner and optional Vault contract ID.
+   * @param args - Owner and optional contract ID.
    * @returns `{ vc_ids }` or `{ result }` with IDs.
    */
-  vaultListVcIdsDirect(args: { owner: string; vaultContractId?: string }) {
+  vaultListVcIdsDirect(args: {
+    owner: string;
+    vaultContractId?: string;
+    contractId?: string;
+  }): Promise<VaultListVcIdsResponse> {
+    const contractId = args.vaultContractId || args.contractId;
     return this.axios
-      .post("/vault/list_vc_ids", args)
-      .then((r) => r.data as { vc_ids?: string[]; result?: string[] });
+      .post<VaultListVcIdsResponse>("/contracts/vault/list-vc-ids", {
+        owner: args.owner,
+        contractId,
+      })
+      .then((r) => r.data);
   }
 
   /**
@@ -177,21 +291,33 @@ export class ActaClient {
    * @param payload - Either `{ signedXdr }` or `{ owner, vaultContractId? }`.
    * @returns `{ vc_ids }` or `{ result }` with IDs.
    */
-  vaultListVcIds(payload: { signedXdr: string } | { owner: string; vaultContractId?: string }) {
+  vaultListVcIds(
+    payload: { signedXdr: string } | { owner: string; vaultContractId?: string }
+  ): Promise<VaultListVcIdsResponse> {
     return this.axios
-      .post("/vault/list_vc_ids", payload)
-      .then((r) => r.data as { vc_ids?: string[]; result?: string[] });
+      .post<VaultListVcIdsResponse>("/vault/list_vc_ids", payload)
+      .then((r) => r.data);
   }
 
   /**
    * Read a credential directly from the Vault contract.
-   * @param args - Owner, VC ID, and optional Vault contract ID.
+   * @param args - Owner, VC ID, and optional contract ID.
    * @returns `{ vc }` or `{ result }` with credential contents.
    */
-  vaultGetVcDirect(args: { owner: string; vcId: string; vaultContractId?: string }) {
+  vaultGetVcDirect(args: {
+    owner: string;
+    vcId: string;
+    vaultContractId?: string;
+    contractId?: string;
+  }): Promise<VaultGetVcResponse> {
+    const contractId = args.vaultContractId || args.contractId;
     return this.axios
-      .post("/vault/get_vc", args)
-      .then((r) => r.data as { vc?: unknown; result?: unknown });
+      .post<VaultGetVcResponse>("/contracts/vault/get-vc", {
+        owner: args.owner,
+        vcId: args.vcId,
+        contractId,
+      })
+      .then((r) => r.data);
   }
 
   /**
@@ -199,10 +325,14 @@ export class ActaClient {
    * @param payload - Either `{ signedXdr }` or `{ owner, vcId, vaultContractId? }`.
    * @returns `{ vc }` or `{ result }` with credential contents.
    */
-  vaultGetVc(payload: { signedXdr: string } | { owner: string; vcId: string; vaultContractId?: string }) {
+  vaultGetVc(
+    payload:
+      | { signedXdr: string }
+      | { owner: string; vcId: string; vaultContractId?: string }
+  ): Promise<VaultGetVcResponse> {
     return this.axios
-      .post("/vault/get_vc", payload)
-      .then((r) => r.data as { vc?: unknown; result?: unknown });
+      .post<VaultGetVcResponse>("/vault/get_vc", payload)
+      .then((r) => r.data);
   }
 
   /**
@@ -210,10 +340,14 @@ export class ActaClient {
    * @param payload - Either `{ signedXdr }` or `{ owner, issuer, vaultContractId }`.
    * @returns `{ tx_id }` of the revoke transaction.
    */
-  vaultRevokeIssuer(payload: { signedXdr: string } | { owner: string; issuer: string; vaultContractId: string }) {
+  vaultRevokeIssuer(
+    payload:
+      | { signedXdr: string }
+      | { owner: string; issuer: string; vaultContractId: string }
+  ): Promise<TxSubmitResponse> {
     return this.axios
-      .post("/vault/revoke_issuer", payload)
-      .then((r) => r.data as { tx_id: string });
+      .post<TxSubmitResponse>("/vault/revoke_issuer", payload)
+      .then((r) => r.data);
   }
 
   /**
@@ -221,10 +355,10 @@ export class ActaClient {
    * @param vcId - Credential identifier.
    * @returns Verification result with `vc_id`, `status`, and optional `since`.
    */
-  verifyStatusGet(vcId: string) {
+  verifyStatusGet(vcId: string): Promise<VerifyStatusResponse> {
     return this.axios
-      .get(`/verify/${encodeURIComponent(vcId)}`)
-      .then((r) => r.data as { vc_id: string; status: string; since?: string });
+      .get<VerifyStatusResponse>(`/verify/${encodeURIComponent(vcId)}`)
+      .then((r) => r.data);
   }
 
   /**
@@ -232,9 +366,152 @@ export class ActaClient {
    * @param payload - `{ vcId, date? }` where `date` defaults to current ISO timestamp.
    * @returns `{ vc_id, tx_id }` of the revoke transaction.
    */
-  revokeCredential(payload: { vcId: string; date?: string }) {
+  revokeCredential(payload: {
+    vcId: string;
+    date?: string;
+  }): Promise<RevokeCredentialResponse> {
     return this.axios
-      .post('/issuance/revoke', payload)
-      .then((r) => r.data as { vc_id: string; tx_id: string });
+      .post<RevokeCredentialResponse>("/issuance/revoke", payload)
+      .then((r) => r.data);
+  }
+
+  /**
+   * Create (initialize) a vault for an owner via the API.
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode: `{ owner, didUri, sourcePublicKey, contractId? }`
+   *                  or submit mode: `{ signedXdr }`
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  vaultCreate(
+    payload:
+      | {
+          owner: string;
+          didUri: string;
+          sourcePublicKey: string;
+          contractId?: string;
+        }
+      | { signedXdr: string }
+  ): Promise<VaultCreateResponse> {
+    return this.axios
+      .post<VaultCreateResponse>("/contracts/vault/create", payload)
+      .then((r) => r.data);
+  }
+
+  /**
+   * Authorize an issuer in a vault via the API.
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode: `{ owner, issuer, sourcePublicKey, contractId? }`
+   *                  or submit mode: `{ signedXdr }`
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  vaultAuthorizeIssuer(
+    payload:
+      | {
+          owner: string;
+          issuer: string;
+          sourcePublicKey: string;
+          contractId?: string;
+        }
+      | { signedXdr: string }
+  ): Promise<VaultAuthorizeIssuerResponse> {
+    return this.axios
+      .post<VaultAuthorizeIssuerResponse>(
+        "/contracts/vault/authorize-issuer",
+        payload
+      )
+      .then((r) => r.data);
+  }
+
+  /**
+   * Revoke a credential via the API.
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode: `{ vcId, date?, sourcePublicKey, contractId? }`
+   *                  or submit mode: `{ signedXdr }`
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  revokeCredentialViaApi(
+    payload:
+      | {
+          vcId: string;
+          date?: string;
+          sourcePublicKey: string;
+          contractId?: string;
+        }
+      | { signedXdr: string }
+  ): Promise<VcRevokeResponse> {
+    return this.axios
+      .post<VcRevokeResponse>("/contracts/vc/revoke", payload)
+      .then((r) => r.data);
+  }
+
+  /**
+   * Revoke (disable) a vault for an owner via the API.
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode: `{ owner, sourcePublicKey, contractId? }`
+   *                  or submit mode: `{ signedXdr }`
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  vaultRevokeVault(
+    payload:
+      | {
+          owner: string;
+          sourcePublicKey: string;
+          contractId?: string;
+        }
+      | { signedXdr: string }
+  ): Promise<VaultRevokeVaultResponse> {
+    return this.axios
+      .post<VaultRevokeVaultResponse>("/contracts/vault/revoke-vault", payload)
+      .then((r) => r.data);
+  }
+
+  /**
+   * Revoke (remove) an authorized issuer from a vault via the API.
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode: `{ owner, issuer, sourcePublicKey, contractId? }`
+   *                  or submit mode: `{ signedXdr }`
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  vaultRevokeIssuerViaApi(
+    payload:
+      | {
+          owner: string;
+          issuer: string;
+          sourcePublicKey: string;
+          contractId?: string;
+        }
+      | { signedXdr: string }
+  ): Promise<VaultRevokeIssuerResponse> {
+    return this.axios
+      .post<VaultRevokeIssuerResponse>(
+        "/contracts/vault/revoke-issuer",
+        payload
+      )
+      .then((r) => r.data);
+  }
+
+  /**
+   * Issue a credential via the API (stores in vault and marks as valid).
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode: `{ owner, vcId, vcData, issuer, issuerDid?, sourcePublicKey, contractId? }`
+   *                  or submit mode: `{ signedXdr }`
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  vcIssue(
+    payload:
+      | {
+          owner: string;
+          vcId: string;
+          vcData: string;
+          issuer: string;
+          issuerDid?: string;
+          sourcePublicKey: string;
+          contractId?: string;
+        }
+      | { signedXdr: string }
+  ): Promise<VcIssueResponse> {
+    return this.axios
+      .post<VcIssueResponse>("/contracts/vc/issue", payload)
+      .then((r) => r.data);
   }
 }

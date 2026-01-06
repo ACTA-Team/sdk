@@ -2,11 +2,8 @@
  * React hooks for the ACTA SDK.
  *
  * Thin wrappers around the `ActaClient` for idiomatic usage in React apps.
+ * Organized by functionality based on actual API endpoints used.
  */
-export * from "./useCreateCredential";
-export * from "./useCreateVault";
-export * from "./useAuthorizeIssuer";
-export * from "./useVaultApi";
-export * from "./useTxPrepare";
-export * from "./useVaultStore";
-export * from "./useRevokeCredential";
+export * from "./useVault";
+export * from "./useCredential";
+export * from "./useVaultRead";
