@@ -205,11 +205,22 @@ export class ActaClient {
    * Note: Storing is done via vcIssue which stores and marks as valid.
    */
   prepareStoreTx(args: {
+    /** Stellar account address (public key) that owns the credential vault */
     owner: string;
+
+    /** Unique identifier for the credential */
     vcId: string;
+
+    /** DID URI of the credential owner */
     didUri: string;
+
+    /** Credential data fields */
     fields: Record<string, unknown>;
+
+    /** Optional vault contract ID (defaults to network contract) */
     vaultContractId?: string;
+
+    /** Optional Stellar account address (public key) of the credential issuer */
     issuer?: string;
   }) {
     // Store is handled by vcIssue, so we redirect to that
@@ -231,7 +242,13 @@ export class ActaClient {
    * @deprecated These are read operations, not prepare operations. Use vaultListVcIdsDirect instead.
    * List VC IDs from the Vault (read operation, no XDR needed).
    */
-  prepareListVcIdsTx(args: { owner: string; vaultContractId?: string }) {
+  prepareListVcIdsTx(args: {
+    /** Stellar account address (public key) that owns the credential vault */
+    owner: string;
+
+    /** Optional vault contract ID (defaults to network contract) */
+    vaultContractId?: string;
+  }) {
     return this.vaultListVcIdsDirect(args).then(() => {
       throw new Error(
         "prepareListVcIdsTx is deprecated. Use vaultListVcIdsDirect for read operations."
@@ -244,8 +261,13 @@ export class ActaClient {
    * Fetch a VC from the Vault (read operation, no XDR needed).
    */
   prepareGetVcTx(args: {
+    /** Stellar account address (public key) that owns the credential vault */
     owner: string;
+
+    /** Unique identifier for the credential */
     vcId: string;
+
+    /** Optional vault contract ID (defaults to network contract) */
     vaultContractId?: string;
   }) {
     return this.vaultGetVcDirect(args).then(() => {
@@ -260,9 +282,16 @@ export class ActaClient {
    * Submit a signed XDR to store a credential in the Vault.
    */
   vaultStore(payload: {
+    /** Signed XDR transaction string */
     signedXdr: string;
+
+    /** Unique identifier for the credential */
     vcId: string;
+
+    /** Optional Stellar account address (public key) that owns the credential vault */
     owner?: string;
+
+    /** Optional vault contract ID (defaults to network contract) */
     vaultContractId?: string;
   }) {
     throw new Error(
@@ -272,13 +301,20 @@ export class ActaClient {
 
   /**
    * Verify a credential against the Vault contract.
-   * @param args - Owner, VC ID, and optional contract ID.
+   * @param args - Credential verification details
    * @returns Verification result with `status` and optional `since`.
    */
   vaultVerify(args: {
+    /** Stellar account address (public key) that owns the credential vault */
     owner: string;
+
+    /** Unique identifier for the credential */
     vcId: string;
+
+    /** Optional vault contract ID (defaults to network contract) */
     vaultContractId?: string;
+
+    /** Optional contract ID (defaults to network contract, alternative to vaultContractId) */
     contractId?: string;
   }): Promise<VaultVerifyVcResponse> {
     const contractId = args.vaultContractId || args.contractId;
@@ -304,12 +340,17 @@ export class ActaClient {
 
   /**
    * List credential IDs directly from the Vault contract.
-   * @param args - Owner and optional contract ID.
+   * @param args - Vault listing details
    * @returns `{ vc_ids }` or `{ result }` with IDs.
    */
   vaultListVcIdsDirect(args: {
+    /** Stellar account address (public key) that owns the credential vault */
     owner: string;
+
+    /** Optional vault contract ID (defaults to network contract) */
     vaultContractId?: string;
+
+    /** Optional contract ID (defaults to network contract, alternative to vaultContractId) */
     contractId?: string;
   }): Promise<VaultListVcIdsResponse> {
     const contractId = args.vaultContractId || args.contractId;
@@ -323,11 +364,19 @@ export class ActaClient {
 
   /**
    * List VC IDs in the Vault using either signed XDR or direct owner payload.
-   * @param payload - Either `{ signedXdr }` or `{ owner, vaultContractId? }`.
+   * @param payload - Either submit mode with signed XDR, or prepare mode with owner details
    * @returns `{ vc_ids }` or `{ result }` with IDs.
    */
   vaultListVcIds(
-    payload: { signedXdr: string } | { owner: string; vaultContractId?: string }
+    payload:
+      | { signedXdr: string }
+      | {
+          /** Stellar account address (public key) that owns the credential vault */
+          owner: string;
+
+          /** Optional vault contract ID (defaults to network contract) */
+          vaultContractId?: string;
+        }
   ): Promise<VaultListVcIdsResponse> {
     return this.axios
       .post<VaultListVcIdsResponse>("/vault/list_vc_ids", payload)
@@ -336,13 +385,20 @@ export class ActaClient {
 
   /**
    * Read a credential directly from the Vault contract.
-   * @param args - Owner, VC ID, and optional contract ID.
+   * @param args - Credential retrieval details
    * @returns `{ vc }` or `{ result }` with credential contents.
    */
   vaultGetVcDirect(args: {
+    /** Stellar account address (public key) that owns the credential vault */
     owner: string;
+
+    /** Unique identifier for the credential */
     vcId: string;
+
+    /** Optional vault contract ID (defaults to network contract) */
     vaultContractId?: string;
+
+    /** Optional contract ID (defaults to network contract, alternative to vaultContractId) */
     contractId?: string;
   }): Promise<VaultGetVcResponse> {
     const contractId = args.vaultContractId || args.contractId;
@@ -357,13 +413,22 @@ export class ActaClient {
 
   /**
    * Fetch a VC from the Vault using either signed XDR or direct owner payload.
-   * @param payload - Either `{ signedXdr }` or `{ owner, vcId, vaultContractId? }`.
+   * @param payload - Either submit mode with signed XDR, or prepare mode with owner and VC details
    * @returns `{ vc }` or `{ result }` with credential contents.
    */
   vaultGetVc(
     payload:
       | { signedXdr: string }
-      | { owner: string; vcId: string; vaultContractId?: string }
+      | {
+          /** Stellar account address (public key) that owns the credential vault */
+          owner: string;
+
+          /** Unique identifier for the credential */
+          vcId: string;
+
+          /** Optional vault contract ID (defaults to network contract) */
+          vaultContractId?: string;
+        }
   ): Promise<VaultGetVcResponse> {
     return this.axios
       .post<VaultGetVcResponse>("/vault/get_vc", payload)
@@ -372,13 +437,22 @@ export class ActaClient {
 
   /**
    * Revoke an issuer in the Vault using either signed XDR or direct owner payload.
-   * @param payload - Either `{ signedXdr }` or `{ owner, issuer, vaultContractId }`.
+   * @param payload - Either submit mode with signed XDR, or prepare mode with owner and issuer details
    * @returns `{ tx_id }` of the revoke transaction.
    */
   vaultRevokeIssuer(
     payload:
       | { signedXdr: string }
-      | { owner: string; issuer: string; vaultContractId: string }
+      | {
+          /** Stellar account address (public key) that owns the credential vault */
+          owner: string;
+
+          /** Stellar account address (public key) of the issuer to revoke */
+          issuer: string;
+
+          /** Vault contract ID */
+          vaultContractId: string;
+        }
   ): Promise<TxSubmitResponse> {
     return this.axios
       .post<TxSubmitResponse>("/vault/revoke_issuer", payload)
@@ -398,11 +472,14 @@ export class ActaClient {
 
   /**
    * Revoke a credential via the Issuance contract (admin-signed on server).
-   * @param payload - `{ vcId, date? }` where `date` defaults to current ISO timestamp.
+   * @param payload - Credential revocation details
    * @returns `{ vc_id, tx_id }` of the revoke transaction.
    */
   revokeCredential(payload: {
+    /** Unique identifier for the credential to revoke */
     vcId: string;
+
+    /** Optional revocation date (ISO timestamp, defaults to current time) */
     date?: string;
   }): Promise<RevokeCredentialResponse> {
     return this.axios
@@ -413,16 +490,22 @@ export class ActaClient {
   /**
    * Create (initialize) a vault for an owner via the API.
    * Can prepare an unsigned XDR or submit a signed XDR.
-   * @param payload - Either prepare mode: `{ owner, didUri, sourcePublicKey, contractId? }`
-   *                  or submit mode: `{ signedXdr }`
+   * @param payload - Either prepare mode with vault creation details, or submit mode with signed XDR
    * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
    */
   vaultCreate(
     payload:
       | {
+          /** Stellar account address (public key) that will own the vault */
           owner: string;
+
+          /** DID URI of the vault owner */
           didUri: string;
+
+          /** Stellar public key that will sign the transaction */
           sourcePublicKey: string;
+
+          /** Optional contract ID (defaults to network contract) */
           contractId?: string;
         }
       | { signedXdr: string }
@@ -435,16 +518,22 @@ export class ActaClient {
   /**
    * Authorize an issuer in a vault via the API.
    * Can prepare an unsigned XDR or submit a signed XDR.
-   * @param payload - Either prepare mode: `{ owner, issuer, sourcePublicKey, contractId? }`
-   *                  or submit mode: `{ signedXdr }`
+   * @param payload - Either prepare mode with authorization details, or submit mode with signed XDR
    * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
    */
   vaultAuthorizeIssuer(
     payload:
       | {
+          /** Stellar account address (public key) that owns the vault */
           owner: string;
+
+          /** Stellar account address (public key) of the issuer to authorize */
           issuer: string;
+
+          /** Stellar public key that will sign the transaction */
           sourcePublicKey: string;
+
+          /** Optional contract ID (defaults to network contract) */
           contractId?: string;
         }
       | { signedXdr: string }
@@ -460,16 +549,22 @@ export class ActaClient {
   /**
    * Revoke a credential via the API.
    * Can prepare an unsigned XDR or submit a signed XDR.
-   * @param payload - Either prepare mode: `{ vcId, date?, sourcePublicKey, contractId? }`
-   *                  or submit mode: `{ signedXdr }`
+   * @param payload - Either prepare mode with revocation details, or submit mode with signed XDR
    * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
    */
   revokeCredentialViaApi(
     payload:
       | {
+          /** Unique identifier for the credential to revoke */
           vcId: string;
+
+          /** Optional revocation date (ISO timestamp, defaults to current time) */
           date?: string;
+
+          /** Stellar public key that will sign the transaction */
           sourcePublicKey: string;
+
+          /** Optional contract ID (defaults to network contract) */
           contractId?: string;
         }
       | { signedXdr: string }
@@ -482,15 +577,19 @@ export class ActaClient {
   /**
    * Revoke (disable) a vault for an owner via the API.
    * Can prepare an unsigned XDR or submit a signed XDR.
-   * @param payload - Either prepare mode: `{ owner, sourcePublicKey, contractId? }`
-   *                  or submit mode: `{ signedXdr }`
+   * @param payload - Either prepare mode with vault revocation details, or submit mode with signed XDR
    * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
    */
   vaultRevokeVault(
     payload:
       | {
+          /** Stellar account address (public key) that owns the vault */
           owner: string;
+
+          /** Stellar public key that will sign the transaction */
           sourcePublicKey: string;
+
+          /** Optional contract ID (defaults to network contract) */
           contractId?: string;
         }
       | { signedXdr: string }
@@ -503,16 +602,22 @@ export class ActaClient {
   /**
    * Revoke (remove) an authorized issuer from a vault via the API.
    * Can prepare an unsigned XDR or submit a signed XDR.
-   * @param payload - Either prepare mode: `{ owner, issuer, sourcePublicKey, contractId? }`
-   *                  or submit mode: `{ signedXdr }`
+   * @param payload - Either prepare mode with issuer revocation details, or submit mode with signed XDR
    * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
    */
   vaultRevokeIssuerViaApi(
     payload:
       | {
+          /** Stellar account address (public key) that owns the vault */
           owner: string;
+
+          /** Stellar account address (public key) of the issuer to revoke */
           issuer: string;
+
+          /** Stellar public key that will sign the transaction */
           sourcePublicKey: string;
+
+          /** Optional contract ID (defaults to network contract) */
           contractId?: string;
         }
       | { signedXdr: string }

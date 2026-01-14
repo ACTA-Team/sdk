@@ -33,28 +33,28 @@ export function useCredential() {
      * @returns `{ txId }` of the submitted transaction.
      */
     issue: async (args: {
-      /** Stellar account address (public key) that owns the credential vault */
+      /** Wallet address of the vault owner */
       owner: string;
 
-      /** Unique identifier for the credential */
+      /** Credential ID */
       vcId: string;
 
-      /** Credential data as JSON string or object. @context will be added automatically if missing */
+      /** Credential data (object or JSON string). @context is added automatically */
       vcData: string | Record<string, unknown>;
 
-      /** Stellar account address (public key) of the credential issuer (who creates the credential) */
+      /** Wallet address of the issuer */
       issuer: string;
 
-      /** DID or wallet address of the credential holder/recipient. If wallet address, DID will be constructed automatically */
+      /** Wallet address or DID of the holder (DID is constructed automatically if wallet address) */
       holder: string;
 
-      /** DID or wallet address of the issuer. If wallet address, DID will be constructed automatically */
+      /** Wallet address or DID of the issuer (DID is constructed automatically if wallet address) */
       issuerDid?: string;
 
-      /** Function to sign the XDR transaction */
+      /** Function to sign transactions */
       signTransaction: Signer;
 
-      /** Optional contract ID (defaults to network contract) */
+      /** Contract ID (optional, defaults to network contract) */
       contractId?: string;
     }) => {
       const cfg = await client.getConfig();
@@ -107,14 +107,23 @@ export function useCredential() {
 
     /**
      * Revoke a credential.
-     * @param args - Owner, VC ID, signer, optional date, and optional contract ID.
+     * @param args - Credential revocation details
      * @returns `{ txId }` of the submitted transaction.
      */
     revoke: async (args: {
+      /** Wallet address of the vault owner */
       owner: string;
+
+      /** Credential ID to revoke */
       vcId: string;
+
+      /** Function to sign transactions */
       signTransaction: Signer;
+
+      /** Revocation date (ISO timestamp, optional, defaults to now) */
       date?: string;
+
+      /** Contract ID (optional, defaults to network contract) */
       contractId?: string;
     }) => {
       const cfg = await client.getConfig();

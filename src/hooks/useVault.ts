@@ -17,13 +17,20 @@ export function useVault() {
   return {
     /**
      * Create (initialize) a vault for an owner.
-     * @param args - Owner, owner DID, signer, and optional contract ID.
+     * @param args - Vault creation details
      * @returns `{ txId }` of the submitted transaction.
      */
     createVault: async (args: {
+      /** Wallet address of the vault owner */
       owner: string;
+
+      /** DID of the vault owner */
       ownerDid: string;
+
+      /** Function to sign transactions */
       signTransaction: Signer;
+
+      /** Contract ID (optional, defaults to network contract) */
       contractId?: string;
     }) => {
       const cfg = await client.getConfig();
@@ -60,13 +67,20 @@ export function useVault() {
 
     /**
      * Authorize an issuer in a vault.
-     * @param args - Owner, issuer address, signer, and optional contract ID.
+     * @param args - Issuer authorization details
      * @returns `{ txId }` of the submitted transaction.
      */
     authorizeIssuer: async (args: {
+      /** Wallet address of the vault owner */
       owner: string;
+
+      /** Wallet address of the issuer to authorize */
       issuer: string;
+
+      /** Function to sign transactions */
       signTransaction: Signer;
+
+      /** Contract ID (optional, defaults to network contract) */
       contractId?: string;
     }) => {
       const cfg = await client.getConfig();
@@ -103,13 +117,20 @@ export function useVault() {
 
     /**
      * Revoke (remove) an authorized issuer from a vault.
-     * @param args - Owner, issuer address, signer, and optional contract ID.
+     * @param args - Issuer revocation details
      * @returns `{ txId }` of the submitted transaction.
      */
     revokeIssuer: async (args: {
+      /** Wallet address of the vault owner */
       owner: string;
+
+      /** Wallet address of the issuer to revoke */
       issuer: string;
+
+      /** Function to sign transactions */
       signTransaction: Signer;
+
+      /** Contract ID (optional, defaults to network contract) */
       contractId?: string;
     }) => {
       const cfg = await client.getConfig();
