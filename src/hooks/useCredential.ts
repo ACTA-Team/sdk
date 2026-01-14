@@ -1,5 +1,9 @@
 import { useActaClient } from "../providers/ActaClientContext";
 import { isTxPrepareResponse, isTxSubmitResponse } from "../types/api-responses";
+import {
+  normalizeDid,
+  ensureContextInVcData,
+} from "../utils/credential-helpers";
 
 /** Function that signs an unsigned XDR with the given network passphrase. */
 type Signer = (
@@ -20,11 +24,10 @@ export function useCredential() {
      * @param args - Credential details:
      *   - owner: Stellar account address (public key) that owns the credential vault
      *   - vcId: Unique identifier for the credential
-     *   - vcData: JSON string containing the credential data/claims. MUST include "@context" field with at least:
-     *     ["https://www.w3.org/ns/credentials/v2", "https://www.w3.org/ns/credentials/examples/v2"]
+     *   - vcData: Credential data as JSON string or object. @context will be added automatically if missing
      *   - issuer: Stellar account address (public key) of the credential issuer (who creates the credential)
-     *   - holder: DID of the credential holder/recipient in format did:pkh:network:walletAddress
-     *   - issuerDid: DID of the issuer in format did:pkh:network:walletAddress
+     *   - holder: DID or wallet address of the credential holder/recipient. If wallet address, DID will be constructed automatically
+     *   - issuerDid: DID or wallet address of the issuer. If wallet address, DID will be constructed automatically
      *   - signTransaction: Function to sign the XDR transaction
      *   - contractId: Optional contract ID (defaults to network contract)
      * @returns `{ txId }` of the submitted transaction.
@@ -36,16 +39,16 @@ export function useCredential() {
       /** Unique identifier for the credential */
       vcId: string;
 
-      /** JSON string containing the credential data/claims. MUST include "@context" field with at least: ["https://www.w3.org/ns/credentials/v2", "https://www.w3.org/ns/credentials/examples/v2"] */
-      vcData: string;
+      /** Credential data as JSON string or object. @context will be added automatically if missing */
+      vcData: string | Record<string, unknown>;
 
       /** Stellar account address (public key) of the credential issuer (who creates the credential) */
       issuer: string;
 
-      /** DID of the credential holder/recipient in format did:pkh:network:walletAddress */
+      /** DID or wallet address of the credential holder/recipient. If wallet address, DID will be constructed automatically */
       holder: string;
 
-      /** DID of the issuer in format did:pkh:network:walletAddress */
+      /** DID or wallet address of the issuer. If wallet address, DID will be constructed automatically */
       issuerDid?: string;
 
       /** Function to sign the XDR transaction */
@@ -59,14 +62,26 @@ export function useCredential() {
 
       if (!contractId) throw new Error("Contract ID not configured");
 
+      // Get network to construct DIDs
+      const network = client.getNetwork();
+
+      // Normalize holder and issuerDid to full DIDs
+      const holderDid = normalizeDid(args.holder, network);
+      const issuerDid = args.issuerDid
+        ? normalizeDid(args.issuerDid, network)
+        : undefined;
+
+      // Ensure @context is present in vcData
+      const vcDataWithContext = ensureContextInVcData(args.vcData);
+
       // Prepare the transaction via API
       const prepareResult = await client.vcIssue({
         owner: args.owner,
         vcId: args.vcId,
-        vcData: args.vcData,
+        vcData: vcDataWithContext,
         issuer: args.issuer,
-        holder: args.holder,
-        issuerDid: args.issuerDid,
+        holder: holderDid,
+        issuerDid: issuerDid,
         sourcePublicKey: args.issuer,
         contractId: contractId,
       });

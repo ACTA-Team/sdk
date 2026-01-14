@@ -95,6 +95,14 @@ export class ActaClient {
   }
 
   /**
+   * Get the network type (mainnet or testnet).
+   * @returns Network type: "mainnet" or "testnet"
+   */
+  getNetwork(): "mainnet" | "testnet" {
+    return this.network;
+  }
+
+  /**
    * Get service health status.
    * @returns Service status, timestamp, and environment info.
    */
