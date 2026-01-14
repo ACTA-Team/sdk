@@ -21,16 +21,7 @@ export function useCredential() {
   return {
     /**
      * Issue a credential (stores in vault and marks as valid).
-     * @param args - Credential details:
-     *   - owner: Stellar account address (public key) that owns the credential vault
-     *   - vcId: Unique identifier for the credential
-     *   - vcData: Credential data as JSON string or object. @context will be added automatically if missing
-     *   - issuer: Stellar account address (public key) of the credential issuer (who creates the credential)
-     *   - holder: DID or wallet address of the credential holder/recipient. If wallet address, DID will be constructed automatically
-     *   - issuerDid: DID or wallet address of the issuer. If wallet address, DID will be constructed automatically
-     *   - signTransaction: Function to sign the XDR transaction
-     *   - contractId: Optional contract ID (defaults to network contract)
-     * @returns `{ txId }` of the submitted transaction.
+     * @returns Transaction ID of the submitted transaction.
      */
     issue: async (args: {
       /** Wallet address of the vault owner */
@@ -107,8 +98,7 @@ export function useCredential() {
 
     /**
      * Revoke a credential.
-     * @param args - Credential revocation details
-     * @returns `{ txId }` of the submitted transaction.
+     * @returns Transaction ID of the submitted transaction.
      */
     revoke: async (args: {
       /** Wallet address of the vault owner */

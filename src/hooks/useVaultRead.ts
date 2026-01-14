@@ -11,7 +11,6 @@ export function useVaultRead() {
   return {
     /**
      * List VC IDs owned by an owner.
-     * @param args - Vault listing details
      * @returns Array of VC IDs.
      */
     listVcIds: async (args: {
@@ -30,7 +29,6 @@ export function useVaultRead() {
 
     /**
      * Get a credential from the vault.
-     * @param args - Credential retrieval details
      * @returns VC data or null if not found.
      */
     getVc: async (args: {
@@ -53,7 +51,6 @@ export function useVaultRead() {
 
     /**
      * Verify a credential status in the vault.
-     * @param args - Credential verification details
      * @returns Verification result with status and optional since date.
      */
     verifyVc: async (args: {

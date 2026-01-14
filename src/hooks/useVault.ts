@@ -17,8 +17,7 @@ export function useVault() {
   return {
     /**
      * Create (initialize) a vault for an owner.
-     * @param args - Vault creation details
-     * @returns `{ txId }` of the submitted transaction.
+     * @returns Transaction ID of the submitted transaction.
      */
     createVault: async (args: {
       /** Wallet address of the vault owner */
@@ -67,8 +66,7 @@ export function useVault() {
 
     /**
      * Authorize an issuer in a vault.
-     * @param args - Issuer authorization details
-     * @returns `{ txId }` of the submitted transaction.
+     * @returns Transaction ID of the submitted transaction.
      */
     authorizeIssuer: async (args: {
       /** Wallet address of the vault owner */
@@ -117,8 +115,7 @@ export function useVault() {
 
     /**
      * Revoke (remove) an authorized issuer from a vault.
-     * @param args - Issuer revocation details
-     * @returns `{ txId }` of the submitted transaction.
+     * @returns Transaction ID of the submitted transaction.
      */
     revokeIssuer: async (args: {
       /** Wallet address of the vault owner */
