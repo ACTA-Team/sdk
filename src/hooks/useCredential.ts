@@ -17,16 +17,34 @@ export function useCredential() {
   return {
     /**
      * Issue a credential (stores in vault and marks as valid).
-     * @param args - Owner, VC ID, VC data, issuer, optional issuer DID, signer, and optional contract ID.
+     * @param args - Credential details:
+     *   - owner: Stellar account address (public key) that owns the credential vault
+     *   - vcId: Unique identifier for the credential
+     *   - vcData: JSON string containing the credential data/claims. MUST include "@context" field with at least:
+     *     ["https://www.w3.org/ns/credentials/v2", "https://www.w3.org/ns/credentials/examples/v2"]
+     *   - issuer: Stellar account address (public key) of the credential issuer (who creates the credential)
+     *   - holder: DID of the credential holder/recipient in format did:pkh:network:walletAddress
+     *   - issuerDid: DID of the issuer in format did:pkh:network:walletAddress
+     *   - signTransaction: Function to sign the XDR transaction
+     *   - contractId: Optional contract ID (defaults to network contract)
      * @returns `{ txId }` of the submitted transaction.
      */
     issue: async (args: {
+      /** Stellar account address (public key) that owns the credential vault */
       owner: string;
+      /** Unique identifier for the credential */
       vcId: string;
+      /** JSON string containing the credential data/claims. MUST include "@context" field with at least: ["https://www.w3.org/ns/credentials/v2", "https://www.w3.org/ns/credentials/examples/v2"] */
       vcData: string;
+      /** Stellar account address (public key) of the credential issuer (who creates the credential) */
       issuer: string;
+      /** DID of the credential holder/recipient in format did:pkh:network:walletAddress */
+      holder: string;
+      /** DID of the issuer in format did:pkh:network:walletAddress */
       issuerDid?: string;
+      /** Function to sign the XDR transaction */
       signTransaction: Signer;
+      /** Optional contract ID (defaults to network contract) */
       contractId?: string;
     }) => {
       const cfg = await client.getConfig();
@@ -40,6 +58,7 @@ export function useCredential() {
         vcId: args.vcId,
         vcData: args.vcData,
         issuer: args.issuer,
+        holder: args.holder,
         issuerDid: args.issuerDid,
         sourcePublicKey: args.issuer,
         contractId: contractId,

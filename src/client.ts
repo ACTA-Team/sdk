@@ -138,16 +138,34 @@ export class ActaClient {
   /**
    * Prepare an unsigned XDR to issue a credential (which stores it in the vault).
    * Uses the same endpoint as vcIssue but only prepares the transaction.
-   * @param args - Arguments describing the owner, VC ID, VC data, issuer, etc.
+   * @param args - Arguments describing the credential details:
+   *   - owner: Stellar account address (public key) that owns the credential vault
+   *   - vcId: Unique identifier for the credential
+   *   - vcData: JSON string containing the credential data/claims. MUST include "@context" field with at least:
+   *     ["https://www.w3.org/ns/credentials/v2", "https://www.w3.org/ns/credentials/examples/v2"]
+   *   - issuer: Stellar account address (public key) of the credential issuer (who creates the credential)
+   *   - holder: DID of the credential holder/recipient in format did:pkh:network:walletAddress
+   *   - issuerDid: DID of the issuer in format did:pkh:network:walletAddress
+   *   - sourcePublicKey: Stellar public key that will sign the transaction
+   *   - contractId: Optional contract ID (defaults to network contract)
    * @returns `{ xdr, network }` to be signed by the caller.
    */
   prepareIssueTx(args: {
+    /** Stellar account address (public key) that owns the credential vault */
     owner: string;
+    /** Unique identifier for the credential */
     vcId: string;
+    /** JSON string containing the credential data/claims. MUST include "@context" field with at least: ["https://www.w3.org/ns/credentials/v2", "https://www.w3.org/ns/credentials/examples/v2"] */
     vcData: string;
+    /** Stellar account address (public key) of the credential issuer (who creates the credential) */
     issuer: string;
+    /** DID of the credential holder/recipient in format did:pkh:network:walletAddress */
+    holder: string;
+    /** DID of the issuer in format did:pkh:network:walletAddress */
     issuerDid?: string;
+    /** Optional contract ID (defaults to network contract) */
     contractId?: string;
+    /** Stellar public key that will sign the transaction */
     sourcePublicKey: string;
   }): Promise<TxPrepareResponse> {
     return this.vcIssue(args).then((r) => {
@@ -188,6 +206,7 @@ export class ActaClient {
       vcId: args.vcId,
       vcData: JSON.stringify(args.fields),
       issuer: args.issuer,
+      holder: args.owner, // Use owner as holder for backward compatibility
       contractId: args.vaultContractId,
       sourcePublicKey: args.owner,
     });
@@ -494,19 +513,37 @@ export class ActaClient {
   /**
    * Issue a credential via the API (stores in vault and marks as valid).
    * Can prepare an unsigned XDR or submit a signed XDR.
-   * @param payload - Either prepare mode: `{ owner, vcId, vcData, issuer, issuerDid?, sourcePublicKey, contractId? }`
-   *                  or submit mode: `{ signedXdr }`
+   * @param payload - Either prepare mode with credential details, or submit mode with signed XDR:
+   *   - owner: Stellar account address (public key) that owns the credential vault
+   *   - vcId: Unique identifier for the credential
+   *   - vcData: JSON string containing the credential data/claims. MUST include "@context" field with at least:
+   *     ["https://www.w3.org/ns/credentials/v2", "https://www.w3.org/ns/credentials/examples/v2"]
+   *   - issuer: Stellar account address (public key) of the credential issuer (who creates the credential)
+   *   - holder: DID of the credential holder/recipient in format did:pkh:network:walletAddress
+   *   - issuerDid: DID of the issuer in format did:pkh:network:walletAddress
+   *   - sourcePublicKey: Stellar public key that will sign the transaction
+   *   - contractId: Optional contract ID (defaults to network contract)
+   *   - signedXdr: For submit mode, the signed XDR transaction string
    * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
    */
   vcIssue(
     payload:
       | {
+          /** Stellar account address (public key) that owns the credential vault */
           owner: string;
+          /** Unique identifier for the credential */
           vcId: string;
+          /** JSON string containing the credential data/claims. MUST include "@context" field with at least: ["https://www.w3.org/ns/credentials/v2", "https://www.w3.org/ns/credentials/examples/v2"] */
           vcData: string;
+          /** Stellar account address (public key) of the credential issuer (who creates the credential) */
           issuer: string;
+          /** DID of the credential holder/recipient in format did:pkh:network:walletAddress */
+          holder: string;
+          /** DID of the issuer in format did:pkh:network:walletAddress */
           issuerDid?: string;
+          /** Stellar public key that will sign the transaction */
           sourcePublicKey: string;
+          /** Optional contract ID (defaults to network contract) */
           contractId?: string;
         }
       | { signedXdr: string }
