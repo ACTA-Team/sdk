@@ -32,18 +32,25 @@ export function useCredential() {
     issue: async (args: {
       /** Stellar account address (public key) that owns the credential vault */
       owner: string;
+
       /** Unique identifier for the credential */
       vcId: string;
+
       /** JSON string containing the credential data/claims. MUST include "@context" field with at least: ["https://www.w3.org/ns/credentials/v2", "https://www.w3.org/ns/credentials/examples/v2"] */
       vcData: string;
+
       /** Stellar account address (public key) of the credential issuer (who creates the credential) */
       issuer: string;
+
       /** DID of the credential holder/recipient in format did:pkh:network:walletAddress */
       holder: string;
+
       /** DID of the issuer in format did:pkh:network:walletAddress */
       issuerDid?: string;
+
       /** Function to sign the XDR transaction */
       signTransaction: Signer;
+
       /** Optional contract ID (defaults to network contract) */
       contractId?: string;
     }) => {
