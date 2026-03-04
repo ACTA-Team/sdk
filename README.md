@@ -19,7 +19,7 @@ import { ActaConfig, mainNet, useVault } from '@acta-team/acta-sdk';
 
 ## Documentation
 
-📖 **[Full Documentation →](./docs/README.md)**
+📖 **[Full Documentation →](https://docs.acta.build)**
 
 The complete guide includes:
 
@@ -29,14 +29,6 @@ The complete guide includes:
 - Transaction flow
 - API keys and roles
 
-## Features
-
-- ✅ **API-driven**: 100% integrated with ACTA API
-- ✅ **Type-safe**: Full TypeScript support
-- ✅ **React hooks**: Idiomatic React usage
-- ✅ **Multi-network**: Supports mainnet and testnet
-- ✅ **Auto-configuration**: Fetches network config dynamically
-
 ## License
 
-MIT
+MIT License – see the LICENSE file for details.T
