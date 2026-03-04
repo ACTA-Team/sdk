@@ -95,42 +95,116 @@ export type VcRevokeResponse = TxResponse;
 export type VaultRevokeVaultResponse = TxResponse;
 
 /**
- * Vault list VC IDs response
+ * Vault list VC IDs response.
+ * Returned by `/contracts/vault/list-vc-ids`.
  */
 export interface VaultListVcIdsResponse {
+  /**
+   * List of credential identifiers returned by the unified contracts API.
+   * This is the preferred field for new integrations.
+   */
   vc_ids?: string[];
+
+  /**
+   * Optional legacy-style field that may contain the same credential IDs.
+   * Some lower-level contract helpers can still return this shape.
+   */
   result?: string[];
 }
 
 /**
- * Vault get VC response
+ * Vault get VC response.
+ * Returned by `/contracts/vault/get-vc`.
  */
 export interface VaultGetVcResponse {
+  /**
+   * Verifiable Credential object returned by the ACTA contract.
+   * This is the high-level, normalized representation.
+   */
   vc?: unknown;
+
+  /**
+   * Optional raw contract result (low-level Soroban data or legacy format).
+   * Prefer using `vc` when available.
+   */
   result?: unknown;
 }
 
 /**
- * Vault verify VC response
+ * Vault verify VC response.
+ * Returned by `/contracts/vault/verify-vc`.
  */
 export interface VaultVerifyVcResponse {
+  /**
+   * Verification status of the credential:
+   * - `"valid"`: the credential is currently valid in the vault/issuance contract.
+   * - `"revoked"`: the credential has been revoked.
+   */
   status: "valid" | "revoked";
+
+  /**
+   * Optional ISO timestamp indicating since cuando el VC
+   * ha estado en el estado actual (`status`) – por ejemplo,
+   * momento de revocación.
+   */
   since?: string;
 }
 
 /**
- * Legacy verification response (for backward compatibility)
+ * Contract version response from /contracts/version endpoint
  */
-export interface VerifyStatusResponse {
-  vc_id: string;
-  status: string;
-  since?: string;
+export interface ContractVersionResponse {
+  version: string;
 }
 
 /**
- * Revoke credential response (legacy endpoint)
+ * Vault migrate response
  */
-export interface RevokeCredentialResponse {
-  vc_id: string;
-  tx_id: string;
+export type VaultMigrateResponse = TxResponse;
+
+/**
+ * Vault push response
+ */
+export type VaultPushResponse = TxResponse;
+
+/**
+ * Vault set new owner response
+ */
+export type VaultSetNewOwnerResponse = TxResponse;
+
+/**
+ * Vault authorize issuers (bulk) response
+ */
+export type VaultAuthorizeIssuersResponse = TxResponse;
+
+/**
+ * Sponsored vault create response
+ */
+export type SponsoredVaultCreateResponse = TxResponse;
+
+/**
+ * Sponsored vault set open-to-all flag response
+ */
+export type SponsoredVaultSetOpenToAllResponse = TxResponse;
+
+/**
+ * Sponsored vault add sponsor response
+ */
+export type SponsoredVaultAddSponsorResponse = TxResponse;
+
+/**
+ * Sponsored vault remove sponsor response
+ */
+export type SponsoredVaultRemoveSponsorResponse = TxResponse;
+
+/**
+ * Sponsored vault `open_to_all` read response.
+ * Returned by `GET /contracts/sponsored-vault/open-to-all`.
+ */
+export interface SponsoredVaultOpenToAllReadResponse {
+  /**
+   * `true` si los sponsored vaults pueden crearse por cualquier caller.
+   * `false` si solo los sponsors permitidos pueden crear sponsored vaults.
+   */
+  open: boolean;
 }

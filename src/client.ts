@@ -15,8 +15,16 @@ import type {
   VaultListVcIdsResponse,
   VaultGetVcResponse,
   VaultVerifyVcResponse,
-  VerifyStatusResponse,
-  RevokeCredentialResponse,
+  ContractVersionResponse,
+  VaultMigrateResponse,
+  VaultPushResponse,
+  VaultSetNewOwnerResponse,
+  VaultAuthorizeIssuersResponse,
+  SponsoredVaultCreateResponse,
+  SponsoredVaultSetOpenToAllResponse,
+  SponsoredVaultAddSponsorResponse,
+  SponsoredVaultRemoveSponsorResponse,
+  SponsoredVaultOpenToAllReadResponse,
 } from "./types/api-responses";
 
 /**
@@ -328,17 +336,6 @@ export class ActaClient {
   }
 
   /**
-   * Verify a credential status via the Issuance contract.
-   * @param vcId - Credential identifier.
-   * @returns Verification result with `vc_id`, `status`, and optional `since`.
-   */
-  verifyStatus(vcId: string): Promise<VerifyStatusResponse> {
-    return this.axios
-      .post<VerifyStatusResponse>(`/verify`, { vcId })
-      .then((r) => r.data);
-  }
-
-  /**
    * List credential IDs directly from the Vault contract.
    * @param args - Vault listing details
    * @returns `{ vc_ids }` or `{ result }` with IDs.
@@ -359,27 +356,6 @@ export class ActaClient {
         owner: args.owner,
         contractId,
       })
-      .then((r) => r.data);
-  }
-
-  /**
-   * List VC IDs in the Vault using either signed XDR or direct owner payload.
-   * @param payload - Either submit mode with signed XDR, or prepare mode with owner details
-   * @returns `{ vc_ids }` or `{ result }` with IDs.
-   */
-  vaultListVcIds(
-    payload:
-      | { signedXdr: string }
-      | {
-          /** Stellar account address (public key) that owns the credential vault */
-          owner: string;
-
-          /** Optional vault contract ID (defaults to network contract) */
-          vaultContractId?: string;
-        }
-  ): Promise<VaultListVcIdsResponse> {
-    return this.axios
-      .post<VaultListVcIdsResponse>("/vault/list_vc_ids", payload)
       .then((r) => r.data);
   }
 
@@ -408,82 +384,6 @@ export class ActaClient {
         vcId: args.vcId,
         contractId,
       })
-      .then((r) => r.data);
-  }
-
-  /**
-   * Fetch a VC from the Vault using either signed XDR or direct owner payload.
-   * @param payload - Either submit mode with signed XDR, or prepare mode with owner and VC details
-   * @returns `{ vc }` or `{ result }` with credential contents.
-   */
-  vaultGetVc(
-    payload:
-      | { signedXdr: string }
-      | {
-          /** Stellar account address (public key) that owns the credential vault */
-          owner: string;
-
-          /** Unique identifier for the credential */
-          vcId: string;
-
-          /** Optional vault contract ID (defaults to network contract) */
-          vaultContractId?: string;
-        }
-  ): Promise<VaultGetVcResponse> {
-    return this.axios
-      .post<VaultGetVcResponse>("/vault/get_vc", payload)
-      .then((r) => r.data);
-  }
-
-  /**
-   * Revoke an issuer in the Vault using either signed XDR or direct owner payload.
-   * @param payload - Either submit mode with signed XDR, or prepare mode with owner and issuer details
-   * @returns `{ tx_id }` of the revoke transaction.
-   */
-  vaultRevokeIssuer(
-    payload:
-      | { signedXdr: string }
-      | {
-          /** Stellar account address (public key) that owns the credential vault */
-          owner: string;
-
-          /** Stellar account address (public key) of the issuer to revoke */
-          issuer: string;
-
-          /** Vault contract ID */
-          vaultContractId: string;
-        }
-  ): Promise<TxSubmitResponse> {
-    return this.axios
-      .post<TxSubmitResponse>("/vault/revoke_issuer", payload)
-      .then((r) => r.data);
-  }
-
-  /**
-   * Verify credential status via GET (legacy compatibility).
-   * @param vcId - Credential identifier.
-   * @returns Verification result with `vc_id`, `status`, and optional `since`.
-   */
-  verifyStatusGet(vcId: string): Promise<VerifyStatusResponse> {
-    return this.axios
-      .get<VerifyStatusResponse>(`/verify/${encodeURIComponent(vcId)}`)
-      .then((r) => r.data);
-  }
-
-  /**
-   * Revoke a credential via the Issuance contract (admin-signed on server).
-   * @param payload - Credential revocation details
-   * @returns `{ vc_id, tx_id }` of the revoke transaction.
-   */
-  revokeCredential(payload: {
-    /** Unique identifier for the credential to revoke */
-    vcId: string;
-
-    /** Optional revocation date (ISO timestamp, defaults to current time) */
-    date?: string;
-  }): Promise<RevokeCredentialResponse> {
-    return this.axios
-      .post<RevokeCredentialResponse>("/issuance/revoke", payload)
       .then((r) => r.data);
   }
 
@@ -677,6 +577,300 @@ export class ActaClient {
   ): Promise<VcIssueResponse> {
     return this.axios
       .post<VcIssueResponse>("/contracts/vc/issue", payload)
+      .then((r) => r.data);
+  }
+
+  /**
+   * Read the ACTA contract version string.
+   * @param args - Optional contract and source configuration
+   * @returns `{ version }` with the contract version.
+   */
+  getContractVersion(args?: {
+    /** Optional contract ID override (defaults to network contract) */
+    contractId?: string;
+
+    /** Optional source public key used for Soroban simulation */
+    sourcePublicKey?: string;
+  }): Promise<ContractVersionResponse> {
+    const params: Record<string, string> = {};
+    if (args?.contractId) params.contractId = args.contractId;
+    if (args?.sourcePublicKey) params.sourcePublicKey = args.sourcePublicKey;
+
+    return this.axios
+      .get<ContractVersionResponse>("/contracts/version", { params })
+      .then((r) => r.data);
+  }
+
+  /**
+   * Migrate legacy vault data for an owner to the current format.
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode with migration details, or submit mode with signed XDR
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  vaultMigrate(
+    payload:
+      | {
+          /** Stellar account address (public key) that owns the vault */
+          owner: string;
+
+          /** Optional contract ID (defaults to network contract) */
+          contractId?: string;
+
+          /** Stellar public key that will sign the transaction */
+          sourcePublicKey: string;
+        }
+      | { signedXdr: string }
+  ): Promise<VaultMigrateResponse> {
+    return this.axios
+      .post<VaultMigrateResponse>("/contracts/vault/migrate", payload)
+      .then((r) => r.data);
+  }
+
+  /**
+   * Replace the full authorized issuer list for an owner's vault.
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode with authorization details, or submit mode with signed XDR
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  vaultAuthorizeIssuers(
+    payload:
+      | {
+          /** Stellar account address (public key) that owns the vault */
+          owner: string;
+
+          /** Array of issuer addresses (public keys) to authorize */
+          issuers: string[];
+
+          /** Stellar public key that will sign the transaction */
+          sourcePublicKey: string;
+
+          /** Optional contract ID (defaults to network contract) */
+          contractId?: string;
+        }
+      | { signedXdr: string }
+  ): Promise<VaultAuthorizeIssuersResponse> {
+    return this.axios
+      .post<VaultAuthorizeIssuersResponse>(
+        "/contracts/vault/authorize-issuers",
+        payload
+      )
+      .then((r) => r.data);
+  }
+
+  /**
+   * Set a new vault owner (vault admin) for an existing vault.
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode with ownership details, or submit mode with signed XDR
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  vaultSetNewOwner(
+    payload:
+      | {
+          /** Current vault owner address (public key) */
+          owner: string;
+
+          /** New vault owner address (public key) */
+          newOwner: string;
+
+          /** Stellar public key that will sign the transaction (must be current vault admin) */
+          sourcePublicKey: string;
+
+          /** Optional contract ID (defaults to network contract) */
+          contractId?: string;
+        }
+      | { signedXdr: string }
+  ): Promise<VaultSetNewOwnerResponse> {
+    if ("signedXdr" in payload) {
+      return this.axios
+        .post<VaultSetNewOwnerResponse>("/contracts/vault/set-new-owner", payload)
+        .then((r) => r.data);
+    }
+
+    const body = {
+      owner: payload.owner,
+      new_owner: payload.newOwner,
+      contractId: payload.contractId,
+      sourcePublicKey: payload.sourcePublicKey,
+    };
+
+    return this.axios
+      .post<VaultSetNewOwnerResponse>("/contracts/vault/set-new-owner", body)
+      .then((r) => r.data);
+  }
+
+  /**
+   * Move a VC from one owner's vault to another.
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode with push details, or submit mode with signed XDR
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  vaultPush(
+    payload:
+      | {
+          /** Origin vault owner address (public key) */
+          fromOwner: string;
+
+          /** Destination vault owner address (public key) */
+          toOwner: string;
+
+          /** Credential identifier */
+          vcId: string;
+
+          /** Issuer address (public key) authorized in the origin vault */
+          issuer: string;
+
+          /** Stellar public key that will sign the transaction (must be fromOwner) */
+          sourcePublicKey: string;
+
+          /** Optional contract ID (defaults to network contract) */
+          contractId?: string;
+        }
+      | { signedXdr: string }
+  ): Promise<VaultPushResponse> {
+    return this.axios
+      .post<VaultPushResponse>("/contracts/vault/push", payload)
+      .then((r) => r.data);
+  }
+
+  /**
+   * Create a sponsored vault for an owner.
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode with sponsored vault details, or submit mode with signed XDR
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  sponsoredVaultCreate(
+    payload:
+      | {
+          /** Sponsor address (public key) that pays for the vault creation */
+          sponsor: string;
+
+          /** Vault owner address (public key) */
+          owner: string;
+
+          /** DID URI of the vault owner */
+          didUri: string;
+
+          /** Stellar public key that will sign the transaction (must be sponsor) */
+          sourcePublicKey: string;
+
+          /** Optional contract ID (defaults to network contract) */
+          contractId?: string;
+        }
+      | { signedXdr: string }
+  ): Promise<SponsoredVaultCreateResponse> {
+    return this.axios
+      .post<SponsoredVaultCreateResponse>(
+        "/contracts/sponsored-vault/create",
+        payload
+      )
+      .then((r) => r.data);
+  }
+
+  /**
+   * Set the sponsored vault open_to_all flag.
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode with flag details, or submit mode with signed XDR
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  sponsoredVaultSetOpenToAll(
+    payload:
+      | {
+          /** Whether sponsored vaults are open to all (true) or restricted (false) */
+          open: boolean;
+
+          /** Stellar public key that will sign the transaction */
+          sourcePublicKey: string;
+
+          /** Optional contract ID (defaults to network contract) */
+          contractId?: string;
+        }
+      | { signedXdr: string }
+  ): Promise<SponsoredVaultSetOpenToAllResponse> {
+    return this.axios
+      .post<SponsoredVaultSetOpenToAllResponse>(
+        "/contracts/sponsored-vault/open-to-all",
+        payload
+      )
+      .then((r) => r.data);
+  }
+
+  /**
+   * Read the sponsored vault open_to_all flag.
+   * @param args - Optional contract and source configuration
+   * @returns `{ open }` flag indicating if sponsored vaults are open to all.
+   */
+  getSponsoredVaultOpenToAll(args?: {
+    /** Optional contract ID override (defaults to network contract) */
+    contractId?: string;
+
+    /** Optional source public key used for Soroban simulation */
+    sourcePublicKey?: string;
+  }): Promise<SponsoredVaultOpenToAllReadResponse> {
+    const params: Record<string, string> = {};
+    if (args?.contractId) params.contractId = args.contractId;
+    if (args?.sourcePublicKey) params.sourcePublicKey = args.sourcePublicKey;
+
+    return this.axios
+      .get<SponsoredVaultOpenToAllReadResponse>(
+        "/contracts/sponsored-vault/open-to-all",
+        { params }
+      )
+      .then((r) => r.data);
+  }
+
+  /**
+   * Add a sponsor address to the sponsored vault sponsors list.
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode with sponsor details, or submit mode with signed XDR
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  sponsoredVaultAddSponsor(
+    payload:
+      | {
+          /** Sponsor address (public key) to add */
+          sponsor: string;
+
+          /** Stellar public key that will sign the transaction */
+          sourcePublicKey: string;
+
+          /** Optional contract ID (defaults to network contract) */
+          contractId?: string;
+        }
+      | { signedXdr: string }
+  ): Promise<SponsoredVaultAddSponsorResponse> {
+    return this.axios
+      .post<SponsoredVaultAddSponsorResponse>(
+        "/contracts/sponsored-vault/add-sponsor",
+        payload
+      )
+      .then((r) => r.data);
+  }
+
+  /**
+   * Remove a sponsor address from the sponsored vault sponsors list.
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode with sponsor details, or submit mode with signed XDR
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  sponsoredVaultRemoveSponsor(
+    payload:
+      | {
+          /** Sponsor address (public key) to remove */
+          sponsor: string;
+
+          /** Stellar public key that will sign the transaction */
+          sourcePublicKey: string;
+
+          /** Optional contract ID (defaults to network contract) */
+          contractId?: string;
+        }
+      | { signedXdr: string }
+  ): Promise<SponsoredVaultRemoveSponsorResponse> {
+    return this.axios
+      .post<SponsoredVaultRemoveSponsorResponse>(
+        "/contracts/sponsored-vault/remove-sponsor",
+        payload
+      )
       .then((r) => r.data);
   }
 }
