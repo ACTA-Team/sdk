@@ -85,6 +85,11 @@ export type VaultRevokeIssuerResponse = TxResponse;
 export type VcIssueResponse = TxResponse;
 
 /**
+ * VC issue linked response
+ */
+export type VcIssueLinkedResponse = TxResponse;
+
+/**
  * VC revoke response
  */
 export type VcRevokeResponse = TxResponse;
@@ -148,6 +153,17 @@ export interface VaultVerifyVcResponse {
    * momento de revocación.
    */
   since?: string;
+}
+
+/**
+ * Vault get VC parent response.
+ * Returned by `/contracts/vault/get-vc-parent`.
+ */
+export interface VaultGetVcParentResponse {
+  parent: {
+    owner: string;
+    vc_id: string;
+  } | null;
 }
 
 /**

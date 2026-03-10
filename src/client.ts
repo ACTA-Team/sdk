@@ -11,6 +11,7 @@ import type {
   VaultRevokeIssuerResponse,
   VaultRevokeVaultResponse,
   VcIssueResponse,
+  VcIssueLinkedResponse,
   VcRevokeResponse,
   VaultListVcIdsResponse,
   VaultGetVcResponse,
@@ -25,6 +26,7 @@ import type {
   SponsoredVaultAddSponsorResponse,
   SponsoredVaultRemoveSponsorResponse,
   SponsoredVaultOpenToAllReadResponse,
+  VaultGetVcParentResponse,
 } from "./types/api-responses";
 
 /**
@@ -388,6 +390,34 @@ export class ActaClient {
   }
 
   /**
+   * Get the parent VC info for a linked credential.
+   * @param args - Credential lookup details
+   * @returns `{ parent }` with owner and vc_id, or `{ parent: null }` if no parent link.
+   */
+  vaultGetVcParent(args: {
+    /** Stellar account address (public key) that owns the credential vault */
+    owner: string;
+
+    /** Unique identifier for the credential */
+    vcId: string;
+
+    /** Optional vault contract ID (defaults to network contract) */
+    vaultContractId?: string;
+
+    /** Optional contract ID (defaults to network contract, alternative to vaultContractId) */
+    contractId?: string;
+  }): Promise<VaultGetVcParentResponse> {
+    const contractId = args.vaultContractId || args.contractId;
+    return this.axios
+      .post<VaultGetVcParentResponse>("/contracts/vault/get-vc-parent", {
+        owner: args.owner,
+        vcId: args.vcId,
+        contractId,
+      })
+      .then((r) => r.data);
+  }
+
+  /**
    * Create (initialize) a vault for an owner via the API.
    * Can prepare an unsigned XDR or submit a signed XDR.
    * @param payload - Either prepare mode with vault creation details, or submit mode with signed XDR
@@ -577,6 +607,52 @@ export class ActaClient {
   ): Promise<VcIssueResponse> {
     return this.axios
       .post<VcIssueResponse>("/contracts/vc/issue", payload)
+      .then((r) => r.data);
+  }
+
+  /**
+   * Issue a linked credential via the API (stores in vault with parent VC reference).
+   * Can prepare an unsigned XDR or submit a signed XDR.
+   * @param payload - Either prepare mode with credential + parent details, or submit mode with signed XDR
+   * @returns Prepare mode: `{ xdr, network }` or Submit mode: `{ tx_id }`
+   */
+  vcIssueLinked(
+    payload:
+      | {
+          /** Stellar account address (public key) that owns the credential vault */
+          owner: string;
+
+          /** Unique identifier for the credential */
+          vcId: string;
+
+          /** JSON string containing the credential data/claims. MUST include "@context" field */
+          vcData: string;
+
+          /** Stellar account address (public key) of the credential issuer */
+          issuer: string;
+
+          /** DID of the credential holder/recipient */
+          holder: string;
+
+          /** DID of the issuer */
+          issuerDid?: string;
+
+          /** Stellar public key that will sign the transaction */
+          sourcePublicKey: string;
+
+          /** Optional contract ID (defaults to network contract) */
+          contractId?: string;
+
+          /** Stellar account address (public key) of the parent VC owner */
+          parentOwner: string;
+
+          /** Identifier of the parent VC */
+          parentVcId: string;
+        }
+      | { signedXdr: string }
+  ): Promise<VcIssueLinkedResponse> {
+    return this.axios
+      .post<VcIssueLinkedResponse>("/contracts/vc/issue-linked", payload)
       .then((r) => r.data);
   }
 

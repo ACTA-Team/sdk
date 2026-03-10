@@ -97,6 +97,85 @@ export function useCredential() {
     },
 
     /**
+     * Issue a linked credential (stores in vault with parent VC reference).
+     * @returns Transaction ID of the submitted transaction.
+     */
+    issueLinked: async (args: {
+      /** Wallet address of the vault owner */
+      owner: string;
+
+      /** Credential ID */
+      vcId: string;
+
+      /** Credential data (object or JSON string). @context is added automatically */
+      vcData: string | Record<string, unknown>;
+
+      /** Wallet address of the issuer */
+      issuer: string;
+
+      /** Wallet address or DID of the holder (DID is constructed automatically if wallet address) */
+      holder: string;
+
+      /** Wallet address or DID of the issuer (DID is constructed automatically if wallet address) */
+      issuerDid?: string;
+
+      /** Function to sign transactions */
+      signTransaction: Signer;
+
+      /** Contract ID (optional, defaults to network contract) */
+      contractId?: string;
+
+      /** Wallet address of the parent VC owner */
+      parentOwner: string;
+
+      /** Parent VC identifier */
+      parentVcId: string;
+    }) => {
+      const cfg = await client.getConfig();
+      const contractId = args.contractId || cfg.actaContractId;
+
+      if (!contractId) throw new Error("Contract ID not configured");
+
+      const network = client.getNetwork();
+
+      const holderDid = normalizeDid(args.holder, network);
+      const issuerDid = args.issuerDid
+        ? normalizeDid(args.issuerDid, network)
+        : undefined;
+
+      const vcDataWithContext = ensureContextInVcData(args.vcData);
+
+      const prepareResult = await client.vcIssueLinked({
+        owner: args.owner,
+        vcId: args.vcId,
+        vcData: vcDataWithContext,
+        issuer: args.issuer,
+        holder: holderDid,
+        issuerDid: issuerDid,
+        sourcePublicKey: args.issuer,
+        contractId: contractId,
+        parentOwner: args.parentOwner,
+        parentVcId: args.parentVcId,
+      });
+
+      if (!isTxPrepareResponse(prepareResult)) {
+        throw new Error("Failed to prepare issue linked credential transaction");
+      }
+
+      const signedXdr = await args.signTransaction(prepareResult.xdr, {
+        networkPassphrase: prepareResult.network,
+      });
+
+      const submitResult = await client.vcIssueLinked({ signedXdr });
+
+      if (!isTxSubmitResponse(submitResult)) {
+        throw new Error("Failed to submit issue linked credential transaction");
+      }
+
+      return { txId: submitResult.tx_id };
+    },
+
+    /**
      * Revoke a credential.
      * @returns Transaction ID of the submitted transaction.
      */
