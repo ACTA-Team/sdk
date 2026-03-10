@@ -1,15 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { baseURL } from "../types/types";
+import { ActaConfigProps } from "../types/types";
 import { ActaClient } from "../client";
 import { ActaProviderContext, useActaClient } from "./ActaClientContext";
-
-export interface ActaConfigProps {
-  baseURL: baseURL;
-  children: any;
-  apiKey?: string;
-}
 
 /**
  * React provider that instantiates and exposes an `ActaClient`.
