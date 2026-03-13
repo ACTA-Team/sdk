@@ -7,6 +7,9 @@ type Signer = (
   opts: { networkPassphrase: string }
 ) => Promise<string>;
 
+/** Vault owner: can be a Stellar account (G...) or a smart contract wallet (C...). */
+type VaultOwner = string;
+
 /**
  * Hook for vault operations: create, authorize issuer, revoke issuer.
  * @returns Methods to manage vault operations via the API.
@@ -20,14 +23,19 @@ export function useVault() {
      * @returns Transaction ID of the submitted transaction.
      */
     createVault: async (args: {
-      /** Wallet address of the vault owner */
-      owner: string;
+      /** Wallet address of the vault owner. Can be G... (account) or C... (smart wallet). */
+      owner: VaultOwner;
 
       /** DID of the vault owner */
       ownerDid: string;
 
       /** Function to sign transactions */
       signTransaction: Signer;
+
+      /** Optional explicit source account (G...) that will sign the transaction.
+       *  For G... owners, defaults to owner when omitted.
+       *  For C... owners, the backend uses the relayer regardless. */
+      sourcePublicKey?: string;
 
       /** Contract ID (optional, defaults to network contract) */
       contractId?: string;
@@ -37,11 +45,18 @@ export function useVault() {
 
       if (!contractId) throw new Error("Contract ID not configured");
 
+      const isSmartAccountOwner =
+        args.owner.startsWith("C") && args.owner.length === 56;
+
       // Prepare the transaction via API
       const prepareResult = await client.vaultCreate({
         owner: args.owner,
         didUri: args.ownerDid,
-        sourcePublicKey: args.owner,
+        ...(isSmartAccountOwner
+          ? {}
+          : {
+              sourcePublicKey: args.sourcePublicKey ?? args.owner,
+            }),
         contractId: contractId,
       });
 
@@ -69,14 +84,19 @@ export function useVault() {
      * @returns Transaction ID of the submitted transaction.
      */
     authorizeIssuer: async (args: {
-      /** Wallet address of the vault owner */
-      owner: string;
+      /** Wallet address of the vault owner. Can be G... (account) or C... (smart wallet). */
+      owner: VaultOwner;
 
       /** Wallet address of the issuer to authorize */
       issuer: string;
 
       /** Function to sign transactions */
       signTransaction: Signer;
+
+      /** Optional explicit source account (G...) that will sign the transaction.
+       *  For G... owners, defaults to owner when omitted.
+       *  For C... owners, the backend uses the relayer regardless. */
+      sourcePublicKey?: string;
 
       /** Contract ID (optional, defaults to network contract) */
       contractId?: string;
@@ -86,11 +106,18 @@ export function useVault() {
 
       if (!contractId) throw new Error("Contract ID not configured");
 
+      const isSmartAccountOwner =
+        args.owner.startsWith("C") && args.owner.length === 56;
+
       // Prepare the transaction via API
       const prepareResult = await client.vaultAuthorizeIssuer({
         owner: args.owner,
         issuer: args.issuer,
-        sourcePublicKey: args.owner,
+        ...(isSmartAccountOwner
+          ? {}
+          : {
+              sourcePublicKey: args.sourcePublicKey ?? args.owner,
+            }),
         contractId: contractId,
       });
 
@@ -118,14 +145,19 @@ export function useVault() {
      * @returns Transaction ID of the submitted transaction.
      */
     revokeIssuer: async (args: {
-      /** Wallet address of the vault owner */
-      owner: string;
+      /** Wallet address of the vault owner. Can be G... (account) or C... (smart wallet). */
+      owner: VaultOwner;
 
       /** Wallet address of the issuer to revoke */
       issuer: string;
 
       /** Function to sign transactions */
       signTransaction: Signer;
+
+      /** Optional explicit source account (G...) that will sign the transaction.
+       *  For G... owners, defaults to owner when omitted.
+       *  For C... owners, the backend uses the relayer regardless. */
+      sourcePublicKey?: string;
 
       /** Contract ID (optional, defaults to network contract) */
       contractId?: string;
@@ -135,11 +167,18 @@ export function useVault() {
 
       if (!contractId) throw new Error("Contract ID not configured");
 
+      const isSmartAccountOwner =
+        args.owner.startsWith("C") && args.owner.length === 56;
+
       // Prepare the transaction via API
       const prepareResult = await client.vaultRevokeIssuerViaApi({
         owner: args.owner,
         issuer: args.issuer,
-        sourcePublicKey: args.owner,
+        ...(isSmartAccountOwner
+          ? {}
+          : {
+              sourcePublicKey: args.sourcePublicKey ?? args.owner,
+            }),
         contractId: contractId,
       });
 

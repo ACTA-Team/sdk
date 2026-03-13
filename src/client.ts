@@ -190,8 +190,9 @@ export class ActaClient {
     /** Optional contract ID (defaults to network contract) */
     contractId?: string;
 
-    /** Stellar public key that will sign the transaction */
-    sourcePublicKey: string;
+    /** Stellar public key that will sign the transaction (G...).
+     *  Optional: when omitted and owner is a smart account (C...), the backend uses the relayer. */
+    sourcePublicKey?: string;
   }): Promise<TxPrepareResponse> {
     return this.vcIssue(args).then((r) => {
       if ("tx_id" in r) {
@@ -432,8 +433,9 @@ export class ActaClient {
           /** DID URI of the vault owner */
           didUri: string;
 
-          /** Stellar public key that will sign the transaction */
-          sourcePublicKey: string;
+          /** Stellar public key that will sign the transaction (G...).
+           *  Optional: when omitted and owner is a smart account (C...), the backend uses the relayer. */
+          sourcePublicKey?: string;
 
           /** Optional contract ID (defaults to network contract) */
           contractId?: string;
@@ -460,8 +462,9 @@ export class ActaClient {
           /** Stellar account address (public key) of the issuer to authorize */
           issuer: string;
 
-          /** Stellar public key that will sign the transaction */
-          sourcePublicKey: string;
+          /** Stellar public key that will sign the transaction (G...).
+           *  Optional: when omitted and owner is a smart account (C...), the backend uses the relayer. */
+          sourcePublicKey?: string;
 
           /** Optional contract ID (defaults to network contract) */
           contractId?: string;
@@ -491,8 +494,9 @@ export class ActaClient {
           /** Optional revocation date (ISO timestamp, defaults to current time) */
           date?: string;
 
-          /** Stellar public key that will sign the transaction */
-          sourcePublicKey: string;
+          /** Stellar public key that will sign the transaction (G...).
+           *  Optional: when omitted, the backend uses the relayer when configured. */
+          sourcePublicKey?: string;
 
           /** Optional contract ID (defaults to network contract) */
           contractId?: string;
@@ -516,8 +520,9 @@ export class ActaClient {
           /** Stellar account address (public key) that owns the vault */
           owner: string;
 
-          /** Stellar public key that will sign the transaction */
-          sourcePublicKey: string;
+          /** Stellar public key that will sign the transaction (G...).
+           *  Optional: when omitted and owner is a smart account (C...), the backend uses the relayer. */
+          sourcePublicKey?: string;
 
           /** Optional contract ID (defaults to network contract) */
           contractId?: string;
@@ -544,8 +549,9 @@ export class ActaClient {
           /** Stellar account address (public key) of the issuer to revoke */
           issuer: string;
 
-          /** Stellar public key that will sign the transaction */
-          sourcePublicKey: string;
+          /** Stellar public key that will sign the transaction (G...).
+           *  Optional: when omitted and owner is a smart account (C...), the backend uses the relayer. */
+          sourcePublicKey?: string;
 
           /** Optional contract ID (defaults to network contract) */
           contractId?: string;
@@ -597,8 +603,9 @@ export class ActaClient {
           /** DID of the issuer in format did:pkh:network:walletAddress */
           issuerDid?: string;
 
-          /** Stellar public key that will sign the transaction */
-          sourcePublicKey: string;
+          /** Stellar public key that will sign the transaction (G...).
+           *  Optional: when omitted and owner is a smart account (C...), the backend uses the relayer. */
+          sourcePublicKey?: string;
 
           /** Optional contract ID (defaults to network contract) */
           contractId?: string;
@@ -637,8 +644,9 @@ export class ActaClient {
           /** DID of the issuer */
           issuerDid?: string;
 
-          /** Stellar public key that will sign the transaction */
-          sourcePublicKey: string;
+          /** Stellar public key that will sign the transaction (G...).
+           *  Optional: when omitted and owner is a smart account (C...), the backend uses the relayer. */
+          sourcePublicKey?: string;
 
           /** Optional contract ID (defaults to network contract) */
           contractId?: string;

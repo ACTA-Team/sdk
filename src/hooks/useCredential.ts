@@ -11,6 +11,9 @@ type Signer = (
   opts: { networkPassphrase: string }
 ) => Promise<string>;
 
+/** Vault owner: can be a Stellar account (G...) or a smart contract wallet (C...). */
+type VaultOwner = string;
+
 /**
  * Hook for credential operations: issue and revoke.
  * @returns Methods to manage credentials via the API.
@@ -24,8 +27,8 @@ export function useCredential() {
      * @returns Transaction ID of the submitted transaction.
      */
     issue: async (args: {
-      /** Wallet address of the vault owner */
-      owner: string;
+      /** Wallet address of the vault owner. Can be G... (account) or C... (smart wallet). */
+      owner: VaultOwner;
 
       /** Credential ID */
       vcId: string;
@@ -44,6 +47,11 @@ export function useCredential() {
 
       /** Function to sign transactions */
       signTransaction: Signer;
+
+      /** Optional explicit source account (G...) that will sign the transaction.
+       *  For G... owners, defaults to issuer when omitted.
+       *  For C... owners, the backend uses the relayer regardless. */
+      sourcePublicKey?: string;
 
       /** Contract ID (optional, defaults to network contract) */
       contractId?: string;
@@ -65,6 +73,9 @@ export function useCredential() {
       // Ensure @context is present in vcData
       const vcDataWithContext = ensureContextInVcData(args.vcData);
 
+      const isSmartAccountOwner =
+        args.owner.startsWith("C") && args.owner.length === 56;
+
       // Prepare the transaction via API
       const prepareResult = await client.vcIssue({
         owner: args.owner,
@@ -73,7 +84,11 @@ export function useCredential() {
         issuer: args.issuer,
         holder: holderDid,
         issuerDid: issuerDid,
-        sourcePublicKey: args.issuer,
+        ...(isSmartAccountOwner
+          ? {}
+          : {
+              sourcePublicKey: args.sourcePublicKey ?? args.issuer,
+            }),
         contractId: contractId,
       });
 
@@ -101,8 +116,8 @@ export function useCredential() {
      * @returns Transaction ID of the submitted transaction.
      */
     issueLinked: async (args: {
-      /** Wallet address of the vault owner */
-      owner: string;
+      /** Wallet address of the vault owner. Can be G... (account) or C... (smart wallet). */
+      owner: VaultOwner;
 
       /** Credential ID */
       vcId: string;
@@ -145,6 +160,9 @@ export function useCredential() {
 
       const vcDataWithContext = ensureContextInVcData(args.vcData);
 
+      const isSmartAccountOwner =
+        args.owner.startsWith("C") && args.owner.length === 56;
+
       const prepareResult = await client.vcIssueLinked({
         owner: args.owner,
         vcId: args.vcId,
@@ -152,7 +170,11 @@ export function useCredential() {
         issuer: args.issuer,
         holder: holderDid,
         issuerDid: issuerDid,
-        sourcePublicKey: args.issuer,
+        ...(isSmartAccountOwner
+          ? {}
+          : {
+              sourcePublicKey: args.sourcePublicKey ?? args.issuer,
+            }),
         contractId: contractId,
         parentOwner: args.parentOwner,
         parentVcId: args.parentVcId,
@@ -180,8 +202,8 @@ export function useCredential() {
      * @returns Transaction ID of the submitted transaction.
      */
     revoke: async (args: {
-      /** Wallet address of the vault owner */
-      owner: string;
+      /** Wallet address of the vault owner. Can be G... (account) or C... (smart wallet). */
+      owner: VaultOwner;
 
       /** Credential ID to revoke */
       vcId: string;
@@ -192,6 +214,11 @@ export function useCredential() {
       /** Revocation date (ISO timestamp, optional, defaults to now) */
       date?: string;
 
+      /** Optional explicit source account (G...) that will sign the transaction.
+       *  For G... owners, defaults to owner when omitted.
+       *  For C... owners, the backend uses the relayer regardless. */
+      sourcePublicKey?: string;
+
       /** Contract ID (optional, defaults to network contract) */
       contractId?: string;
     }) => {
@@ -200,11 +227,18 @@ export function useCredential() {
 
       if (!contractId) throw new Error("Contract ID not configured");
 
+      const isSmartAccountOwner =
+        args.owner.startsWith("C") && args.owner.length === 56;
+
       // Prepare the transaction via API
       const prepareResult = await client.revokeCredentialViaApi({
         vcId: args.vcId,
         date: args.date || new Date().toISOString(),
-        sourcePublicKey: args.owner,
+        ...(isSmartAccountOwner
+          ? {}
+          : {
+              sourcePublicKey: args.sourcePublicKey ?? args.owner,
+            }),
         contractId: contractId,
       });
 
