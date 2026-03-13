@@ -137,6 +137,11 @@ export function useCredential() {
       /** Function to sign transactions */
       signTransaction: Signer;
 
+      /** Optional explicit source account (G...) that will sign the transaction.
+       *  For G... owners, defaults to issuer when omitted.
+       *  For C... owners, the backend uses the relayer regardless. */
+      sourcePublicKey?: string;
+
       /** Contract ID (optional, defaults to network contract) */
       contractId?: string;
 
