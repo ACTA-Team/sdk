@@ -1,5 +1,5 @@
-# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
-# For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
+# Publishes @acta-team/credentials to the public npm registry when a GitHub Release is created.
+# Requires a Repository secret named `npm_token` (npm automation or granular token with publish access).
 
 name: Node.js Package
 
@@ -30,6 +30,16 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org/
+      - name: Verify npm_token (repository secret)
+        run: |
+          if [ -z "${NPM_TOKEN_CHECK}" ]; then
+            echo "::error::Missing GitHub Actions secret 'npm_token'. It must be a Repository secret on THIS repo (acta-credentials), not only an Environment secret."
+            echo "Fix: Settings → Secrets and variables → Actions → Secrets → Repository secrets → New repository secret"
+            echo "Name: npm_token   Value: npmjs granular or automation token (starts with npm_)"
+            exit 1
+          fi
+        env:
+          NPM_TOKEN_CHECK: ${{ secrets.npm_token }}
       - run: npm ci
       - run: npm publish --access public --provenance
         env:
