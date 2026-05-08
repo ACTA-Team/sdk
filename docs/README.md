@@ -1,11 +1,11 @@
-# ACTA SDK - Quick Guide
+# ACTA Credentials — Quick Guide
 
 React SDK to interact with ACTA API and manage verifiable credentials on Stellar.
 
 ## Installation
 
 ```bash
-npm install @acta-team/credentials
+npm i @acta-team/credentials
 ```
 
 ## Configuration

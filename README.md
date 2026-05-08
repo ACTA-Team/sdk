@@ -5,7 +5,7 @@ React SDK to interact with ACTA API and manage verifiable credentials on Stellar
 ## Quick Start
 
 ```bash
-npm install @acta-team/credentials
+npm i @acta-team/credentials
 ```
 
 ```typescript
