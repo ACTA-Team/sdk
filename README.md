@@ -1,15 +1,15 @@
-# ACTA SDK
+# ACTA Credentials SDK
 
 React SDK to interact with ACTA API and manage verifiable credentials on Stellar blockchain.
 
 ## Quick Start
 
 ```bash
-npm install @acta-team/acta-sdk
+npm install @acta-team/credentials
 ```
 
 ```typescript
-import { ActaConfig, mainNet, useVault } from '@acta-team/acta-sdk';
+import { ActaConfig, mainNet, useVault } from '@acta-team/credentials';
 
 // Configure API key in .env: ACTA_API_KEY_MAINNET=your-api-key
 <ActaConfig baseURL={mainNet}>
@@ -31,4 +31,4 @@ The complete guide includes:
 
 ## License
 
-MIT License – see the LICENSE file for details.T
+MIT License – see the LICENSE file for details.

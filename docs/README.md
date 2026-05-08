@@ -5,7 +5,7 @@ React SDK to interact with ACTA API and manage verifiable credentials on Stellar
 ## Installation
 
 ```bash
-npm install @acta-team/acta-sdk
+npm install @acta-team/credentials
 ```
 
 ## Configuration
@@ -27,7 +27,7 @@ ACTA_API_KEY_TESTNET=your-testnet-api-key
 ### 2. Configure the Provider
 
 ```typescript
-import { ActaConfig, mainNet, testNet } from '@acta-team/acta-sdk';
+import { ActaConfig, mainNet, testNet } from '@acta-team/credentials';
 
 // For mainnet
 <ActaConfig baseURL={mainNet}>
@@ -170,7 +170,7 @@ try {
 The SDK supports two networks:
 
 ```typescript
-import { mainNet, testNet } from "@acta-team/acta-sdk";
+import { mainNet, testNet } from "@acta-team/credentials";
 
 // Mainnet
 mainNet; // "https://acta.build/api/mainnet"
@@ -194,7 +194,7 @@ You don't need to configure these values manually.
 ## Complete Example
 
 ```typescript
-import { ActaConfig, mainNet, useVault, useCredential, useVaultRead } from '@acta-team/acta-sdk';
+import { ActaConfig, mainNet, useVault, useCredential, useVaultRead } from '@acta-team/credentials';
 
 function App() {
   return (
@@ -238,5 +238,5 @@ Available roles:
 ## Support
 
 - Full documentation: See `README.md` in the repository
-- Issues: https://github.com/ACTA-Team/ACTA-sdk/issues
+- Issues: https://github.com/ACTA-Team/acta-api/issues
 - dApp: https://dapp.acta.build
