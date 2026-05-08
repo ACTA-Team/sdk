@@ -1,5 +1,5 @@
 # Publishes @acta-team/credentials to the public npm registry when a GitHub Release is created.
-# Requires a Repository secret named `npm_token` (npm automation or granular token with publish access).
+# Requires a Repository secret named `NPM_TOKEN` (npm automation or granular token with publish access).
 
 name: Node.js Package
 
@@ -30,17 +30,17 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org/
-      - name: Verify npm_token (repository secret)
+      - name: Verify NPM_TOKEN (repository secret)
         run: |
           if [ -z "${NPM_TOKEN_CHECK}" ]; then
-            echo "::error::Missing GitHub Actions secret 'npm_token'. It must be a Repository secret on THIS repo (acta-credentials), not only an Environment secret."
+            echo "::error::Missing GitHub Actions secret 'NPM_TOKEN'. It must be a Repository secret on THIS repo (acta-credentials), not only an Environment secret."
             echo "Fix: Settings → Secrets and variables → Actions → Secrets → Repository secrets → New repository secret"
-            echo "Name: npm_token   Value: npmjs granular or automation token (starts with npm_)"
+            echo "Name: NPM_TOKEN   Value: npmjs granular or automation token (starts with npm_)"
             exit 1
           fi
         env:
-          NPM_TOKEN_CHECK: ${{ secrets.NODE_AUTH_TOKEN }}
+          NPM_TOKEN_CHECK: ${{ secrets.NPM_TOKEN }}
       - run: npm ci
       - run: npm publish --access public --provenance
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
